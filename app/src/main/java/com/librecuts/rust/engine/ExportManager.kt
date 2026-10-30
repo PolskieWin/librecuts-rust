@@ -17,6 +17,15 @@ sealed class ExportState {
     data class Exporting(val progress: Float) : ExportState()
     data class Success(val outputPath: String) : ExportState()
     data class Error(val message: String) : ExportState()
+    object Cancelled : ExportState()
+}
+
+enum class ExportResolution(val label: String, val width: Int, val height: Int) {
+    R720P("HD (720p)", 1280, 720),
+    R1080P("Full HD (1080p)", 1920, 1080),
+    R4K("4K UHD (2160p)", 3840, 2160);
+
+    fun toDimensions(): Pair<Int, Int> = Pair(width, height)
 }
 
 class ExportManager(private val context: Context) {

@@ -266,7 +266,7 @@ private fun TrackRow(
                 }
 
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
+                    modifier = Modifier.padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -277,16 +277,19 @@ private fun TrackRow(
                             TrackType.Text -> Icons.Default.TextFields
                         },
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(13.dp),
                         tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${clip.durationMs / 1000}s",
-                        fontSize = 11.sp,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
-                        maxLines = 1
-                    )
+                    if (widthDp >= 50.dp) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${clip.durationMs / 1000}s",
+                            fontSize = 11.sp,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 // Render Keyframe Diamond Markers on Clip

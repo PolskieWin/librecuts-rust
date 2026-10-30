@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,28 +22,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CallSplit
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +71,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -79,16 +82,20 @@ import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.EffectConfig
 import com.librecuts.rust.engine.ExportManager
 import com.librecuts.rust.engine.FileUtils
+import com.librecuts.rust.engine.FontManager
 import com.librecuts.rust.engine.Keyframe
 import com.librecuts.rust.engine.Project
+import com.librecuts.rust.engine.SpeedCurveType
 import com.librecuts.rust.engine.SrtParser
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
+import com.librecuts.rust.engine.TransitionType
 import com.librecuts.rust.plugin.PluginManager
 import com.librecuts.rust.ui.components.TimelineView
 import com.librecuts.rust.ui.components.VideoPreviewPlayer
 import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppThemeMode
+import com.librecuts.rust.ui.theme.LocalAppStrings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -104,7 +111,9 @@ fun EditorScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val strings = LocalAppStrings.current
     val haptics = rememberHapticHelper()
+    val fontManager = remember { FontManager(context) }
     val pluginManager = remember { PluginManager(context) }
     val audioRecorder = remember { AudioRecorderHelper(context) }
     val exportManager = remember { ExportManager(context) }
@@ -114,10 +123,10 @@ fun EditorScreen(
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var selectedClipId by remember { mutableStateOf<String?>(null) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showCompressDialog by remember { mutableStateOf(false) }
     var showEffectsSheet by remember { mutableStateOf(false) }
     var showPluginManagerSheet by remember { mutableStateOf(false) }
-    var showThemeMenu by remember { mutableStateOf(false) }
-    var showImportMenu by remember { mutableStateOf(false) }
+    var showAudioSheet by remember { mutableStateOf(false) }
 
     var isRecordingVoiceover by remember { mutableStateOf(false) }
     var recordElapsedSeconds by remember { mutableLongStateOf(0L) }
@@ -137,36 +146,72 @@ fun EditorScreen(
         onSaveProject(project.copy(composition = newComp))
     }
 
-    // Modern Android 14+ Media Pickers
-    val videoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
+    // Multiple Video Import Picker Contract
+    val multipleVideoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
             scope.launch {
-                val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, it)
-                val clipId = UUID.randomUUID().toString()
-                val newClip = Clip(
-                    id = clipId,
-                    file_path = localPath,
-                    source_start_ms = 0L,
-                    source_end_ms = realDurationMs,
-                    timeline_start_ms = composition.totalDurationMs
-                )
+                var timelineOffset = composition.totalDurationMs
+                val newClips = mutableListOf<Clip>()
+
+                uris.forEach { uri ->
+                    val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, uri)
+                    newClips.add(
+                        Clip(
+                            id = UUID.randomUUID().toString(),
+                            file_path = localPath,
+                            source_start_ms = 0L,
+                            source_end_ms = realDurationMs,
+                            timeline_start_ms = timelineOffset
+                        )
+                    )
+                    timelineOffset += realDurationMs
+                }
 
                 val updatedTracks = composition.tracks.map { track ->
                     if (track.track_type == TrackType.Video) {
-                        track.copy(clips = track.clips + newClip)
+                        track.copy(clips = track.clips + newClips)
                     } else {
                         track
                     }
                 }
                 updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                selectedClipId = clipId
+                selectedClipId = newClips.firstOrNull()?.id
                 haptics.split()
+                Toast.makeText(context, "Imported ${newClips.size} clips!", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    // Audio / Song Picker
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, it)
+                val audioClip = Clip(
+                    id = UUID.randomUUID().toString(),
+                    file_path = localPath,
+                    source_start_ms = 0L,
+                    source_end_ms = realDurationMs,
+                    timeline_start_ms = currentPositionMs
+                )
+                val updatedTracks = composition.tracks.map { track ->
+                    if (track.track_type == TrackType.Audio) {
+                        track.copy(clips = track.clips + audioClip)
+                    } else track
+                }
+                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                haptics.split()
+                showAudioSheet = false
+                Toast.makeText(context, "Audio track added!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Subtitles SRT Picker
     val srtPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -235,7 +280,7 @@ fun EditorScreen(
                     }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back to Projects",
+                            contentDescription = strings.back,
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -246,10 +291,11 @@ fun EditorScreen(
                             text = project.title,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${project.aspectRatio} • Rust Vulkan Hardware Accel",
+                            text = "${project.aspectRatio} • Rust Vulkan Engine",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -273,7 +319,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Undo,
-                            contentDescription = "Undo",
+                            contentDescription = strings.undo,
                             tint = if (undoStack.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -292,7 +338,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Redo,
-                            contentDescription = "Redo",
+                            contentDescription = strings.redo,
                             tint = if (redoStack.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -304,123 +350,81 @@ fun EditorScreen(
                     }) {
                         Icon(
                             imageVector = Icons.Default.Extension,
-                            contentDescription = "Community Plugins",
+                            contentDescription = strings.plugins,
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-
-                    // Theme Switcher Menu
-                    Box {
-                        IconButton(onClick = {
+                }
+            )
+        },
+        bottomBar = {
+            // Compact Bottom Toolbar for Import, Audio, Subtitles, Compress & Export as requested
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 1. Add Clips
+                    BottomToolbarItem(
+                        icon = Icons.Default.VideoCall,
+                        label = strings.addClips,
+                        onClick = {
                             haptics.tick()
-                            showThemeMenu = true
-                        }) {
-                            Icon(
-                                imageVector = when (currentTheme) {
-                                    AppThemeMode.MATERIAL_YOU_AUTO -> Icons.Default.ColorLens
-                                    AppThemeMode.LIGHT -> Icons.Default.LightMode
-                                    AppThemeMode.DARK -> Icons.Default.DarkMode
-                                    AppThemeMode.PURE_BLACK -> Icons.Default.ColorLens
-                                },
-                                contentDescription = "Switch Theme",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            multipleVideoPickerLauncher.launch("video/*")
                         }
+                    )
 
-                        DropdownMenu(
-                            expanded = showThemeMenu,
-                            onDismissRequest = { showThemeMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("✨ Material You (Auto)") },
-                                onClick = {
-                                    onThemeChanged(AppThemeMode.MATERIAL_YOU_AUTO)
-                                    showThemeMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("☀️ Light Mode") },
-                                onClick = {
-                                    onThemeChanged(AppThemeMode.LIGHT)
-                                    showThemeMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("🌙 Dark Mode") },
-                                onClick = {
-                                    onThemeChanged(AppThemeMode.DARK)
-                                    showThemeMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("⬛ Pure Black (OLED)") },
-                                onClick = {
-                                    onThemeChanged(AppThemeMode.PURE_BLACK)
-                                    showThemeMenu = false
-                                }
-                            )
+                    // 2. Audio & SFX
+                    BottomToolbarItem(
+                        icon = Icons.Default.LibraryMusic,
+                        label = strings.addAudio,
+                        onClick = {
+                            haptics.tick()
+                            showAudioSheet = true
                         }
-                    }
+                    )
 
-                    // Import Media Menu
-                    Box {
-                        Button(
-                            onClick = {
-                                haptics.tick()
-                                showImportMenu = true
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Import", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add", fontSize = 13.sp)
+                    // 3. Subtitles
+                    BottomToolbarItem(
+                        icon = Icons.Default.Subtitles,
+                        label = strings.addSubtitles,
+                        onClick = {
+                            haptics.tick()
+                            srtPickerLauncher.launch("*/*")
                         }
+                    )
 
-                        DropdownMenu(
-                            expanded = showImportMenu,
-                            onDismissRequest = { showImportMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("🎥 Video / Image Clip") },
-                                onClick = {
-                                    showImportMenu = false
-                                    videoPickerLauncher.launch("video/*")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("📄 Subtitles (.srt)") },
-                                onClick = {
-                                    showImportMenu = false
-                                    srtPickerLauncher.launch("*/*")
-                                }
-                            )
+                    // 4. Compress
+                    BottomToolbarItem(
+                        icon = Icons.Default.Compress,
+                        label = strings.compress,
+                        onClick = {
+                            haptics.tick()
+                            showCompressDialog = true
                         }
-                    }
+                    )
 
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Export Button
-                    Button(
+                    // 5. Export
+                    BottomToolbarItem(
+                        icon = Icons.Default.FileUpload,
+                        label = strings.export,
+                        isHighlight = true,
                         onClick = {
                             haptics.snap()
                             showExportDialog = true
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Default.FileUpload, contentDescription = "Export", modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export", fontSize = 13.sp)
-                    }
+                        }
+                    )
                 }
-            )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -472,7 +476,7 @@ fun EditorScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Recording Voiceover: ${recordElapsedSeconds}s",
+                                text = "${strings.recordingVoiceover}: ${recordElapsedSeconds}s",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
@@ -481,7 +485,7 @@ fun EditorScreen(
                     }
                 }
 
-                // Render Active Text Overlays if present on active clip
+                // Render Active Text Overlays with Custom Font Support and NO Stretch Bug
                 val activeTextOverlay = composition.tracks
                     .flatMap { it.clips }
                     .filter { currentPositionMs in it.timeline_start_ms..(it.timeline_start_ms + it.durationMs) }
@@ -490,18 +494,26 @@ fun EditorScreen(
                     .firstOrNull()
 
                 activeTextOverlay?.let { textEff ->
+                    val customFontFamily = remember(textEff.custom_font_path) {
+                        fontManager.getFontFamily(textEff.custom_font_path)
+                    }
+
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 24.dp)
+                            .padding(horizontal = 24.dp, vertical = 20.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.7f))
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .background(Color.Black.copy(alpha = 0.72f))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = textEff.text,
+                            fontFamily = customFontFamily,
                             fontSize = textEff.font_size.sp,
-                            color = Color.White
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -511,7 +523,7 @@ fun EditorScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(48.dp)
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -524,7 +536,7 @@ fun EditorScreen(
                 }) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
+                        contentDescription = if (isPlaying) strings.pause else strings.play,
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -561,7 +573,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             Icons.Default.CallSplit,
-                            contentDescription = "Split",
+                            contentDescription = strings.split,
                             tint = if (selectedClip != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -590,7 +602,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             Icons.Default.Diamond,
-                            contentDescription = "Keyframe",
+                            contentDescription = strings.keyframe,
                             tint = if (selectedClip != null) Color(0xFFFFEB3B) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -599,7 +611,6 @@ fun EditorScreen(
                     IconButton(
                         onClick = {
                             if (isRecordingVoiceover) {
-                                // Stop voiceover
                                 val result = audioRecorder.stopRecording()
                                 isRecordingVoiceover = false
                                 if (result != null) {
@@ -617,10 +628,9 @@ fun EditorScreen(
                                         } else track
                                     }
                                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                                    Toast.makeText(context, "Voiceover added to audio track!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Voiceover added!", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
-                                // Start recording
                                 val hasPermission = ContextCompat.checkSelfPermission(
                                     context,
                                     Manifest.permission.RECORD_AUDIO
@@ -640,12 +650,12 @@ fun EditorScreen(
                     ) {
                         Icon(
                             imageVector = if (isRecordingVoiceover) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Voiceover",
+                            contentDescription = strings.voiceover,
                             tint = if (isRecordingVoiceover) Color.Red else MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    // Effects / Filters / Chroma Key / Masking Sheet
+                    // Effects / Speed / Transitions / Crop Sheet
                     IconButton(
                         onClick = {
                             haptics.tick()
@@ -655,7 +665,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             Icons.Default.AutoFixHigh,
-                            contentDescription = "Effects",
+                            contentDescription = strings.effects,
                             tint = if (selectedClip != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -676,8 +686,8 @@ fun EditorScreen(
                     ) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = if (selectedClip != null) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            contentDescription = strings.delete,
+                            tint = if (selectedClip != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
                 }
@@ -697,7 +707,7 @@ fun EditorScreen(
         }
     }
 
-    // Effects & Text Bottom Sheet
+    // Effects & Text Bottom Sheet (Includes Speed Curves, Transitions, Crop, Masks, Custom Fonts)
     if (showEffectsSheet && selectedClip != null) {
         ModalBottomSheet(
             onDismissRequest = { showEffectsSheet = false },
@@ -706,15 +716,53 @@ fun EditorScreen(
         ) {
             EffectsSheet(
                 clip = selectedClip,
-                onUpdateEffects = { newEffects, newSpeed, newVolume ->
+                onUpdateClip = { newEffects, newSpeed, newSpeedCurve, newVolume, newTransition ->
                     val updatedTracks = composition.tracks.map { track ->
                         track.copy(clips = track.clips.map {
                             if (it.id == selectedClip.id) {
-                                it.copy(effects = newEffects, speed = newSpeed, volume = newVolume)
+                                it.copy(
+                                    effects = newEffects,
+                                    speed = newSpeed,
+                                    speedCurve = newSpeedCurve,
+                                    volume = newVolume,
+                                    transition = newTransition
+                                )
                             } else it
                         })
                     }
                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                }
+            )
+        }
+    }
+
+    // Audio & Sound FX Sheet
+    if (showAudioSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAudioSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            AudioImportSheet(
+                onImportLocalFile = {
+                    haptics.tick()
+                    audioPickerLauncher.launch("audio/*")
+                },
+                onSelectPreset = { name, durationSec ->
+                    haptics.snap()
+                    val audioClip = Clip(
+                        id = UUID.randomUUID().toString(),
+                        file_path = "sfx://${name.lowercase().replace(" ", "_")}",
+                        source_start_ms = 0L,
+                        source_end_ms = (durationSec * 1000).toLong(),
+                        timeline_start_ms = currentPositionMs
+                    )
+                    val updatedTracks = composition.tracks.map { track ->
+                        if (track.track_type == TrackType.Audio) track.copy(clips = track.clips + audioClip) else track
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    showAudioSheet = false
+                    Toast.makeText(context, "$name added!", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -734,9 +782,31 @@ fun EditorScreen(
         }
     }
 
+    // Compress Dialog
+    if (showCompressDialog) {
+        CompressDialog(
+            composition = composition,
+            exportState = exportState,
+            onStartCompress = { res, bitrate ->
+                scope.launch {
+                    exportManager.exportComposition(
+                        composition = composition,
+                        resolution = res.toDimensions(),
+                        fps = 30,
+                        bitrateMbps = bitrate,
+                        smartRender = false
+                    )
+                }
+            },
+            onCancel = { exportManager.cancel() },
+            onDismiss = { showCompressDialog = false }
+        )
+    }
+
     // Export Dialog
     if (showExportDialog) {
         ExportDialog(
+            totalDurationMs = composition.totalDurationMs,
             exportState = exportState,
             onStartExport = { res, fps, bitrate, smartRender ->
                 scope.launch {
@@ -752,5 +822,112 @@ fun EditorScreen(
             onCancel = { exportManager.cancel() },
             onDismiss = { showExportDialog = false }
         )
+    }
+}
+
+@Composable
+private fun BottomToolbarItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isHighlight: Boolean = false,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isHighlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Normal,
+            color = if (isHighlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+        )
+    }
+}
+
+@Composable
+private fun AudioImportSheet(
+    onImportLocalFile: () -> Unit,
+    onSelectPreset: (name: String, durationSec: Double) -> Unit
+) {
+    val haptics = rememberHapticHelper()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Audio & Sound Effects",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Option 1: File Picker
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onImportLocalFile() }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Import Audio Song / Voice (.mp3, .wav, .m4a)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Select any audio file from device storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Built-in Sound Effects", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val presets = listOf(
+            Triple("Cinematic Boom Impact", 2.5, "Deep low-end impact hit"),
+            Triple("Fast Air Whoosh", 0.8, "Quick transition swish"),
+            Triple("UI Tactile Pop Click", 0.3, "Subtle mechanical click"),
+            Triple("Tension Riser", 3.0, "Ascending pitch suspense builder"),
+            Triple("Vinyl Record Scratch", 1.2, "Retro turntable tape scratch")
+        )
+
+        presets.forEach { (name, duration, desc) ->
+            Card(
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp)
+                    .clickable { onSelectPreset(name, duration) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        Text(desc, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Text("${duration}s", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
     }
 }

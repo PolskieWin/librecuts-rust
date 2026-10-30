@@ -68,3 +68,4 @@ fun rememberHapticHelper(): HapticHelper {
     val context = LocalContext.current
     return remember(context) { HapticHelper(context) }
 }
+

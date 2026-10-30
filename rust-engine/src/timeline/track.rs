@@ -47,6 +47,8 @@ pub enum EffectConfig {
         rotation_degrees: f32,
         flip_h: bool,
         flip_v: bool,
+        #[serde(default)]
+        crop_aspect_ratio: Option<String>,
     },
     TextOverlay {
         text: String,
@@ -54,6 +56,8 @@ pub enum EffectConfig {
         x: f32,
         y: f32,
         color_rgba: u32,
+        #[serde(default)]
+        custom_font_path: Option<String>,
     },
     ShapeMask {
         shape: String,
@@ -75,10 +79,16 @@ pub struct Clip {
     pub timeline_start_ms: u64,
     #[serde(default = "default_speed")]
     pub speed: f32,
+    #[serde(default)]
+    pub speedCurve: Option<String>,
     #[serde(default = "default_volume")]
     pub volume: f32,
     #[serde(default)]
     pub muted: bool,
+    #[serde(default)]
+    pub transition: Option<String>,
+    #[serde(default)]
+    pub transitionDurationMs: Option<u64>,
     #[serde(default)]
     pub keyframes: Vec<Keyframe>,
     #[serde(default)]

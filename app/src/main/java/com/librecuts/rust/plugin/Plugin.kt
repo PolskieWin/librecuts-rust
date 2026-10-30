@@ -41,3 +41,4 @@ data class LibreCutPlugin(
     val shaderCode: String? = null,
     val parameters: List<PluginParameter> = emptyList()
 )
+

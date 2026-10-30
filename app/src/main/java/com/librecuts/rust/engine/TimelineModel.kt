@@ -12,6 +12,26 @@ enum class TrackType {
 }
 
 @Serializable
+enum class TransitionType {
+    @SerialName("None") None,
+    @SerialName("CrossDissolve") CrossDissolve,
+    @SerialName("FadeToBlack") FadeToBlack,
+    @SerialName("DipToWhite") DipToWhite,
+    @SerialName("SlideLeft") SlideLeft,
+    @SerialName("SlideRight") SlideRight,
+    @SerialName("ZoomBlur") ZoomBlur
+}
+
+@Serializable
+enum class SpeedCurveType(val label: String) {
+    NORMAL("Normal"),
+    MONTAGE("Montage"),
+    HERO_MOMENT("Hero Moment"),
+    BULLET_TIME("Bullet Time"),
+    FLASH_IN("Flash In")
+}
+
+@Serializable
 data class Keyframe(
     val timeMs: Long,
     val x: Float = 0f,
@@ -59,7 +79,8 @@ sealed class EffectConfig {
         val crop_bottom: Float = 0f,
         val rotation_degrees: Float = 0f,
         val flip_h: Boolean = false,
-        val flip_v: Boolean = false
+        val flip_v: Boolean = false,
+        val crop_aspect_ratio: String = "Freeform"
     ) : EffectConfig()
 
     @Serializable
@@ -69,7 +90,8 @@ sealed class EffectConfig {
         val font_size: Float = 24f,
         val x: Float = 0.5f,
         val y: Float = 0.8f,
-        val color_rgba: Long = 0xFFFFFFFFL
+        val color_rgba: Long = 0xFFFFFFFFL,
+        val custom_font_path: String? = null
     ) : EffectConfig()
 
     @Serializable
@@ -93,8 +115,11 @@ data class Clip(
     val source_end_ms: Long,
     val timeline_start_ms: Long,
     val speed: Float = 1.0f,
+    val speedCurve: SpeedCurveType = SpeedCurveType.NORMAL,
     val volume: Float = 1.0f,
     val muted: Boolean = false,
+    val transition: TransitionType = TransitionType.None,
+    val transitionDurationMs: Long = 500L,
     val keyframes: List<Keyframe> = emptyList(),
     val effects: List<EffectConfig> = emptyList()
 ) {
@@ -139,5 +164,21 @@ data class ExportConfig(
     val video_codec: String = "h264",
     val audio_codec: String = "aac",
     val smart_render: Boolean = true
-)
+) {
+    companion object {
+        fun estimateFileSizeBytes(durationMs: Long, videoBitrateBps: Int, audioBitrateBps: Int): Long {
+            val totalBps = (videoBitrateBps + audioBitrateBps).toLong()
+            val durationSec = durationMs.toDouble() / 1000.0
+            return ((totalBps * durationSec) / 8.0).toLong().coerceAtLeast(1024L)
+        }
 
+        fun formatFileSize(bytes: Long): String {
+            val mb = bytes.toDouble() / (1024.0 * 1024.0)
+            return if (mb >= 1000) {
+                "%.2f GB".format(mb / 1024.0)
+            } else {
+                "%.1f MB".format(mb)
+            }
+        }
+    }
+}
