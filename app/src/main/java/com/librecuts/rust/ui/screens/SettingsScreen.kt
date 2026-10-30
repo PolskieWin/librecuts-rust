@@ -2,10 +2,14 @@ package com.librecuts.rust.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,42 +23,46 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.librecuts.rust.engine.FontManager
 import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppLanguage
 import com.librecuts.rust.ui.theme.AppThemeMode
-import com.librecuts.rust.ui.theme.LocalAppLanguage
 import com.librecuts.rust.ui.theme.LocalAppStrings
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,11 +71,33 @@ fun SettingsScreen(
     onThemeChanged: (AppThemeMode) -> Unit,
     currentLanguage: AppLanguage,
     onLanguageChanged: (AppLanguage) -> Unit,
+    isTimeTrackerEnabled: Boolean = false,
+    onTimeTrackerChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val strings = LocalAppStrings.current
     val haptics = rememberHapticHelper()
+    val fontManager = remember { FontManager(context) }
+    var availableFonts by remember { mutableStateOf(fontManager.getAvailableFonts()) }
+
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val opt = fontManager.importFontFromUri(it)
+                if (opt != null) {
+                    availableFonts = fontManager.getAvailableFonts()
+                    haptics.snap()
+                    Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to import font", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -116,7 +146,7 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(14.dp)) {
                     ThemeOptionRow(
                         title = strings.themeMaterialYou,
-                        subtitle = "Adaptive colors based on system wallpaper",
+                        subtitle = "Adaptive Electric Blue colors based on wallpaper",
                         selected = currentTheme == AppThemeMode.MATERIAL_YOU_AUTO,
                         onSelect = {
                             haptics.tick()
@@ -136,7 +166,7 @@ fun SettingsScreen(
                     Divider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
                     ThemeOptionRow(
                         title = strings.themeDark,
-                        subtitle = "Standard dark grey theme",
+                        subtitle = "Standard dark blue slate theme",
                         selected = currentTheme == AppThemeMode.DARK,
                         onSelect = {
                             haptics.tick()
@@ -156,7 +186,7 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
             // Section 2: Language Switcher (Only English, Spanish, Polish)
             SectionHeader(title = strings.languageSection, icon = Icons.Default.Language)
@@ -183,9 +213,110 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
-            // Section 3: About the Project
+            // Section 3: Project Time Tracker (Optional feature enabled by user)
+            SectionHeader(title = strings.timeTracker, icon = Icons.Default.Timer)
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = strings.timeTracker,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = strings.timeTrackerDesc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    }
+                    Switch(
+                        checked = isTimeTrackerEnabled,
+                        onCheckedChange = {
+                            haptics.tick()
+                            onTimeTrackerChanged(it)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            // Section 4: Custom Fonts (Global font importer & manager)
+            SectionHeader(title = strings.customFontsSection, icon = Icons.Default.FontDownload)
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = strings.customFontsSection,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = strings.customFontsDesc,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                haptics.tick()
+                                fontPickerLauncher.launch("*/*")
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Import Font", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Available Fonts Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        availableFonts.forEach { fontOpt ->
+                            FilterChip(
+                                selected = false,
+                                onClick = {},
+                                label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            // Section 5: About the Project
             SectionHeader(title = strings.aboutSection, icon = Icons.Default.Info)
 
             Card(
@@ -339,4 +470,3 @@ private fun LanguageOptionRow(
         )
     }
 }
-

@@ -99,10 +99,18 @@ flowchart TD
 15. **Tactile Haptic Feedback Engine**:
     - Tactile clicks on magnetic snap points, dual-clicks on split cuts, micro-ticks on timeline frame scrubbing, and heavy feedback on deletion.
 16. **Settings & Language Switcher (EN / ES / PL)**:
-    - Bottom gear shortcut on the projects screen opening Settings with instant switching between English, Spanish (Español), and Polish (Polski), plus project attribution.
-17. **Electric Blue Theme + Pure Black OLED**:
-    - Crisp Electric Blue palette, adaptive Material You dynamic color, Light Mode, Dark Mode, and true 0 IRE Pure Black (`#000000`) OLED mode with no oversized button text.
-18. **100% Offline & F-Droid Ready**:
+    - Dedicated Settings screen with instant switching between English, Spanish (Español), and Polish (Polski), global custom font manager, project time tracking toggle, and project attribution to Tobiasz.
+17. **Project Thumbnails & High-Performance Caching**:
+    - High-performance LRU memory + disk thumbnail caching. Video frames and imported images render instantly on project dashboard cards with electric blue gradient fallback (cards are never blank).
+18. **Project Editing Time Tracker**:
+    - Optional active editing time tracker (toggled in Settings). Displays exact hours, minutes, and seconds invested into each video project directly on dashboard cards.
+19. **Categorized Bottom Toolbar & Media Import**:
+    - Clean, horizontally scrollable bottom dock categorizing tools into Media (Videos & Images with Cutout), Audio & SFX, Subtitles, Transitions, Animations, Adjust & FX, Plugins & Layout, Compress, and Export.
+20. **Sapphire Blue Diamond Keyframe System**:
+    - Precision sapphire cyan keyframe marker controls on the timeline playhead with instant property interpolation.
+21. **Electric Blue Theme + Pure Black OLED**:
+    - Crisp Electric Blue palette, adaptive Material You dynamic color, Light Mode, Dark Mode, and true 0 IRE Pure Black (`#000000`) OLED mode with clean typography.
+22. **100% Offline & F-Droid Ready**:
     - Zero internet permissions in `AndroidManifest.xml`. Zero trackers, zero analytics, zero ads, zero watermarks.
     - Includes reproducible build recipe for F-Droid (`fdroid/metadata/com.librecuts.rust.yml`).
 

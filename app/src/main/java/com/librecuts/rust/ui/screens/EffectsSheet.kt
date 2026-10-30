@@ -110,11 +110,12 @@ fun EffectsSheet(
     var bgRemovalInvert by remember(clip.id) { mutableStateOf(existingBgRemoval?.invert ?: false) }
 
     // Chroma key states
+    val existingChroma = clip.effects.find { it is EffectConfig.ChromaKey } as? EffectConfig.ChromaKey
     var chromaEnabled by remember(clip.id) {
-        mutableStateOf(clip.effects.any { it is EffectConfig.ChromaKey })
+        mutableStateOf(existingChroma != null)
     }
-    var similarity by remember(clip.id) { mutableFloatStateOf(0.35f) }
-    var despill by remember(clip.id) { mutableFloatStateOf(0.5f) }
+    var similarity by remember(clip.id) { mutableFloatStateOf(existingChroma?.similarity ?: 0.35f) }
+    var despill by remember(clip.id) { mutableFloatStateOf(existingChroma?.despill ?: 0.5f) }
 
     // Shape Masking states
     val existingMask = clip.effects.find { it is EffectConfig.ShapeMask } as? EffectConfig.ShapeMask
@@ -125,9 +126,10 @@ fun EffectsSheet(
     var maskInvert by remember(clip.id) { mutableStateOf(existingMask?.invert ?: false) }
 
     // Color grading states
-    var brightness by remember(clip.id) { mutableFloatStateOf(0.0f) }
-    var contrast by remember(clip.id) { mutableFloatStateOf(1.0f) }
-    var saturation by remember(clip.id) { mutableFloatStateOf(1.0f) }
+    val existingColor = clip.effects.find { it is EffectConfig.ColorGrading } as? EffectConfig.ColorGrading
+    var brightness by remember(clip.id) { mutableFloatStateOf(existingColor?.brightness ?: 0.0f) }
+    var contrast by remember(clip.id) { mutableFloatStateOf(existingColor?.contrast ?: 1.0f) }
+    var saturation by remember(clip.id) { mutableFloatStateOf(existingColor?.saturation ?: 1.0f) }
 
     // Creative Filter state
     val existingFilter = clip.effects.find { it is EffectConfig.Filter } as? EffectConfig.Filter

@@ -18,12 +18,21 @@ data class Project(
     val createdAt: Long = System.currentTimeMillis(),
     val lastModifiedAt: Long = System.currentTimeMillis(),
     val aspectRatio: String = "16:9", // "16:9", "9:16", "1:1", "4:5"
+    val timeSpentSeconds: Long = 0L,
     val composition: Composition
 ) {
     val formattedLastModified: String
         get() {
             val sdf = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
             return sdf.format(Date(lastModifiedAt))
+        }
+
+    val formattedTimeSpent: String
+        get() {
+            val hours = timeSpentSeconds / 3600
+            val minutes = (timeSpentSeconds % 3600) / 60
+            val seconds = timeSpentSeconds % 60
+            return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m ${seconds}s"
         }
 
     val totalDurationSeconds: Long

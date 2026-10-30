@@ -1,5 +1,7 @@
 package com.librecuts.rust.ui.screens
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,6 +65,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.Project
 import com.librecuts.rust.engine.ProjectRepository
+import com.librecuts.rust.engine.ThumbnailCache
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
 import com.librecuts.rust.ui.components.rememberHapticHelper
@@ -83,6 +89,7 @@ import kotlinx.coroutines.launch
 fun ProjectsScreen(
     currentTheme: AppThemeMode,
     onThemeChanged: (AppThemeMode) -> Unit,
+    isTimeTrackerEnabled: Boolean = false,
     onOpenProject: (Project) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -146,59 +153,6 @@ fun ProjectsScreen(
                     }
                 }
             )
-        },
-        bottomBar = {
-            // Bottom Action Bar with small gear button as requested
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${projects.size} ${strings.clipsCount}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier
-                            .clickable {
-                                haptics.tick()
-                                onOpenSettings()
-                            }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = strings.settings,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = strings.settings,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
         }
     ) { innerPadding ->
         Column(
@@ -314,6 +268,7 @@ fun ProjectsScreen(
                     items(projects, key = { it.id }) { project ->
                         ProjectCard(
                             project = project,
+                            isTimeTrackerEnabled = isTimeTrackerEnabled,
                             onClick = {
                                 haptics.tick()
                                 onOpenProject(project)
@@ -488,6 +443,7 @@ fun NewProjectDialog(
 @Composable
 fun ProjectCard(
     project: Project,
+    isTimeTrackerEnabled: Boolean = false,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
@@ -495,6 +451,13 @@ fun ProjectCard(
 ) {
     val strings = LocalAppStrings.current
     var showMenu by remember { mutableStateOf(false) }
+    var thumbnailBitmap by remember(project.firstClipUri) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(project.firstClipUri) {
+        project.firstClipUri?.let { path ->
+            thumbnailBitmap = ThumbnailCache.getThumbnail(path)
+        }
+    }
 
     Card(
         shape = RoundedCornerShape(14.dp),
@@ -506,7 +469,7 @@ fun ProjectCard(
             .clickable { onClick() }
     ) {
         Column {
-            // Thumbnail Canvas Box
+            // Thumbnail Canvas Box (Image or Rich Electric Blue Gradient)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -514,12 +477,46 @@ fun ProjectCard(
                     .background(Color.Black.copy(alpha = 0.85f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Movie,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    modifier = Modifier.size(36.dp)
-                )
+                if (thumbnailBitmap != null) {
+                    Image(
+                        bitmap = thumbnailBitmap!!.asImageBitmap(),
+                        contentDescription = project.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Modern Gradient Placeholder so projects are never blank
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF0F172A),
+                                        Color(0xFF0284C7).copy(alpha = 0.45f),
+                                        Color(0xFF38BDF8).copy(alpha = 0.25f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Movie,
+                                contentDescription = null,
+                                tint = AccentSkyBlue.copy(alpha = 0.75f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = project.aspectRatio,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentSkyBlue.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
+                }
 
                 // Aspect Ratio Pill
                 Surface(
@@ -535,6 +532,36 @@ fun ProjectCard(
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
+                }
+
+                // Time Spent Pill (If Tracker is Enabled and time recorded)
+                if (isTimeTrackerEnabled && project.timeSpentSeconds > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF0284C7).copy(alpha = 0.85f),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(10.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = project.formattedTimeSpent,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
 
                 // Duration Pill

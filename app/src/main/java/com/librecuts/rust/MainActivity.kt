@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
             var currentScreen by remember { mutableStateOf(MainScreen.PROJECTS) }
             var themeMode by remember { mutableStateOf(AppThemeMode.PURE_BLACK) }
             var appLanguage by remember { mutableStateOf(AppLanguage.ENGLISH) }
+            var isTimeTrackerEnabled by remember { mutableStateOf(false) }
             var activeProject by remember { mutableStateOf<Project?>(null) }
             val projectRepo = remember { ProjectRepository(this) }
             val scope = rememberCoroutineScope()
@@ -67,6 +68,8 @@ class MainActivity : ComponentActivity() {
                                     onThemeChanged = { themeMode = it },
                                     currentLanguage = appLanguage,
                                     onLanguageChanged = { appLanguage = it },
+                                    isTimeTrackerEnabled = isTimeTrackerEnabled,
+                                    onTimeTrackerChanged = { isTimeTrackerEnabled = it },
                                     onBack = { currentScreen = MainScreen.PROJECTS }
                                 )
                             }
@@ -74,6 +77,7 @@ class MainActivity : ComponentActivity() {
                                 ProjectsScreen(
                                     currentTheme = themeMode,
                                     onThemeChanged = { themeMode = it },
+                                    isTimeTrackerEnabled = isTimeTrackerEnabled,
                                     onOpenProject = { project ->
                                         activeProject = project
                                         currentScreen = MainScreen.EDITOR
@@ -93,6 +97,7 @@ class MainActivity : ComponentActivity() {
                                         project = project,
                                         currentTheme = themeMode,
                                         onThemeChanged = { themeMode = it },
+                                        isTimeTrackerEnabled = isTimeTrackerEnabled,
                                         onSaveProject = { updatedProject ->
                                             scope.launch {
                                                 projectRepo.saveProject(updatedProject)

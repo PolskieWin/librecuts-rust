@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@android:color/black" />
+    <background>
+        <color android:color="#38BDF8" />
+    </background>
     <foreground>
         <vector android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <!-- Modern Minimalist Clean Cut / Play Geometry in Pure White -->
             <path
-                android:fillColor="#FFB300"
-                android:pathData="M30,24 L78,24 C81.3,24 84,26.7 84,30 L84,78 C84,81.3 81.3,84 78,84 L30,84 C26.7,84 24,81.3 24,78 L24,30 C24,26.7 26.7,24 30,24 Z" />
+                android:fillColor="#FFFFFF"
+                android:pathData="M34,28 C30.68,28 28,30.68 28,34 L28,74 C28,77.32 30.68,80 34,80 L74,80 C77.32,80 80,77.32 80,74 L80,34 C80,30.68 77.32,28 74,28 Z M46,38 L68,54 L46,70 Z" />
+            <!-- Clean diagonal cut accent -->
             <path
-                android:fillColor="#121212"
-                android:pathData="M44,38 L68,54 L44,70 Z" />
+                android:fillColor="#0284C7"
+                android:pathData="M66,32 L74,32 C75.1,32 76,32.9 76,34 L76,42 Z" />
         </vector>
     </foreground>
 </adaptive-icon>
-

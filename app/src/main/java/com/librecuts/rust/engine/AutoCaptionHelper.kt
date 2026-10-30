@@ -108,3 +108,4 @@ class AutoCaptionHelper(private val context: Context) {
         return SpeechRecognizer.isRecognitionAvailable(context)
     }
 }
+

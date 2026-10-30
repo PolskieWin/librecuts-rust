@@ -11,18 +11,28 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Compress
@@ -30,6 +40,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -51,6 +62,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -60,6 +73,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +123,7 @@ fun EditorScreen(
     project: Project,
     currentTheme: AppThemeMode,
     onThemeChanged: (AppThemeMode) -> Unit,
+    isTimeTrackerEnabled: Boolean = false,
     onSaveProject: (Project) -> Unit,
     onBackToProjects: () -> Unit
 ) {
@@ -132,6 +147,21 @@ fun EditorScreen(
     var showPluginManagerSheet by remember { mutableStateOf(false) }
     var showAudioSheet by remember { mutableStateOf(false) }
     var showSubtitleSheet by remember { mutableStateOf(false) }
+    var showMediaImportSheet by remember { mutableStateOf(false) }
+    var showTransitionsSheet by remember { mutableStateOf(false) }
+    var showAnimationsSheet by remember { mutableStateOf(false) }
+
+    var projectTimeSpentSeconds by remember(project.id) { mutableLongStateOf(project.timeSpentSeconds) }
+
+    // Active project editing time tracker ticker
+    LaunchedEffect(isTimeTrackerEnabled) {
+        if (isTimeTrackerEnabled) {
+            while (true) {
+                delay(1000L)
+                projectTimeSpentSeconds++
+            }
+        }
+    }
 
     var isRecordingVoiceover by remember { mutableStateOf(false) }
     var recordElapsedSeconds by remember { mutableLongStateOf(0L) }
@@ -148,7 +178,44 @@ fun EditorScreen(
         undoStack.add(composition)
         redoStack.clear()
         composition = newComp
-        onSaveProject(project.copy(composition = newComp))
+        onSaveProject(project.copy(composition = newComp, timeSpentSeconds = projectTimeSpentSeconds))
+    }
+
+    // Image Import Picker Contract
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                var timelineOffset = composition.totalDurationMs
+                val newClips = mutableListOf<Clip>()
+
+                uris.forEach { uri ->
+                    val (localPath, _) = FileUtils.resolveMediaUriToLocalFile(context, uri)
+                    val imgDurationMs = 3000L
+                    newClips.add(
+                        Clip(
+                            id = UUID.randomUUID().toString(),
+                            file_path = localPath,
+                            source_start_ms = 0L,
+                            source_end_ms = imgDurationMs,
+                            timeline_start_ms = timelineOffset
+                        )
+                    )
+                    timelineOffset += imgDurationMs
+                }
+
+                val updatedTracks = composition.tracks.map { track ->
+                    if (track.track_type == TrackType.Video) {
+                        track.copy(clips = track.clips + newClips)
+                    } else track
+                }
+                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                selectedClipId = newClips.firstOrNull()?.id
+                haptics.split()
+                Toast.makeText(context, "Imported ${newClips.size} images!", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     // Multiple Video Import Picker Contract
@@ -275,7 +342,7 @@ fun EditorScreen(
     LaunchedEffect(composition) {
         while (true) {
             delay(120_000L)
-            onSaveProject(project.copy(composition = composition))
+            onSaveProject(project.copy(composition = composition, timeSpentSeconds = projectTimeSpentSeconds))
         }
     }
 
@@ -371,28 +438,29 @@ fun EditorScreen(
             )
         },
         bottomBar = {
-            // Compact Bottom Toolbar for Import, Audio, Subtitles, Compress & Export as requested
+            // Categorized Bottom Action Toolbar with Direct Selectors (Media, SFX, Subtitles, Transitions, Animations, FX, Plugins, Export)
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 8.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
+                    .height(62.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Add Clips
+                    // 1. Media (Add Videos / Import Images)
                     BottomToolbarItem(
                         icon = Icons.Default.VideoCall,
                         label = strings.addClips,
                         onClick = {
                             haptics.tick()
-                            multipleVideoPickerLauncher.launch("video/*")
+                            showMediaImportSheet = true
                         }
                     )
 
@@ -416,7 +484,59 @@ fun EditorScreen(
                         }
                     )
 
-                    // 4. Compress
+                    // 4. Transitions Direct Selector
+                    BottomToolbarItem(
+                        icon = Icons.Default.Animation,
+                        label = strings.transitions,
+                        onClick = {
+                            haptics.tick()
+                            if (selectedClip != null) {
+                                showTransitionsSheet = true
+                            } else {
+                                Toast.makeText(context, "Select a clip first to apply transitions", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    // 5. Animations Direct Selector
+                    BottomToolbarItem(
+                        icon = Icons.Default.AutoAwesome,
+                        label = strings.animations,
+                        onClick = {
+                            haptics.tick()
+                            if (selectedClip != null) {
+                                showAnimationsSheet = true
+                            } else {
+                                Toast.makeText(context, "Select a clip first to apply animations", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    // 6. Adjust & FX (Filters, Color Grading, Cutout, Mask, Crop)
+                    BottomToolbarItem(
+                        icon = Icons.Default.AutoFixHigh,
+                        label = strings.effects,
+                        onClick = {
+                            haptics.tick()
+                            if (selectedClip != null) {
+                                showEffectsSheet = true
+                            } else {
+                                Toast.makeText(context, "Select a clip first to adjust", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    // 7. Plugins & Layout Customizer
+                    BottomToolbarItem(
+                        icon = Icons.Default.Extension,
+                        label = strings.plugins,
+                        onClick = {
+                            haptics.tick()
+                            showPluginManagerSheet = true
+                        }
+                    )
+
+                    // 8. Compress
                     BottomToolbarItem(
                         icon = Icons.Default.Compress,
                         label = strings.compress,
@@ -426,7 +546,7 @@ fun EditorScreen(
                         }
                     )
 
-                    // 5. Export
+                    // 9. Export
                     BottomToolbarItem(
                         icon = Icons.Default.FileUpload,
                         label = strings.export,
@@ -460,6 +580,7 @@ fun EditorScreen(
             ) {
                 VideoPreviewPlayer(
                     videoUri = currentVideoUri,
+                    activeClip = selectedClip,
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
                     onPositionChanged = { currentPositionMs = it },
@@ -616,7 +737,7 @@ fun EditorScreen(
                         Icon(
                             Icons.Default.Diamond,
                             contentDescription = strings.keyframe,
-                            tint = if (selectedClip != null) Color(0xFFFFEB3B) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            tint = if (selectedClip != null) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
 
@@ -897,6 +1018,77 @@ fun EditorScreen(
             onDismiss = { showExportDialog = false }
         )
     }
+
+    // Media Import Bottom Sheet (Videos & Images)
+    if (showMediaImportSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMediaImportSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            MediaImportSheet(
+                onImportVideos = {
+                    showMediaImportSheet = false
+                    multipleVideoPickerLauncher.launch("video/*")
+                },
+                onImportImages = {
+                    showMediaImportSheet = false
+                    imagePickerLauncher.launch("image/*")
+                }
+            )
+        }
+    }
+
+    // Direct Transitions Bottom Sheet
+    if (showTransitionsSheet && selectedClip != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showTransitionsSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            DirectTransitionsSheet(
+                selectedTransition = selectedClip.transition,
+                transitionDurationMs = selectedClip.transitionDurationMs,
+                onSelectTransition = { newTransition, newDuration ->
+                    val updatedTracks = composition.tracks.map { track ->
+                        track.copy(clips = track.clips.map {
+                            if (it.id == selectedClip.id) {
+                                it.copy(transition = newTransition, transitionDurationMs = newDuration)
+                            } else it
+                        })
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    showTransitionsSheet = false
+                    Toast.makeText(context, "Transition applied: ${newTransition.displayName}", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
+
+    // Direct Animations Bottom Sheet
+    if (showAnimationsSheet && selectedClip != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showAnimationsSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            DirectAnimationsSheet(
+                selectedAnimation = selectedClip.animation,
+                onSelectAnimation = { newAnimation ->
+                    val updatedTracks = composition.tracks.map { track ->
+                        track.copy(clips = track.clips.map {
+                            if (it.id == selectedClip.id) {
+                                it.copy(animation = newAnimation)
+                            } else it
+                        })
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    showAnimationsSheet = false
+                    Toast.makeText(context, "Animation applied: ${newAnimation.label}", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
 }
 
 @Composable
@@ -1104,6 +1296,258 @@ private fun SubtitleImportSheet(
                 Column {
                     Text("Add Blank Title / Text Clip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                     Text("Insert a customizable text overlay at current playhead", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaImportSheet(
+    onImportVideos: () -> Unit,
+    onImportImages: () -> Unit
+) {
+    val haptics = rememberHapticHelper()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Import Media",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Add video clips or images directly to timeline tracks",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.snap()
+                    onImportVideos()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.VideoCall, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Import Videos / Clips", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Select one or multiple video files from device storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.snap()
+                    onImportImages()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Import Photos & Images (with Auto Cutout)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Add still photos/graphics to timeline and remove background in Effects", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DirectTransitionsSheet(
+    selectedTransition: TransitionType,
+    transitionDurationMs: Long,
+    onSelectTransition: (TransitionType, Long) -> Unit
+) {
+    val haptics = rememberHapticHelper()
+    var currentDuration by remember { mutableFloatStateOf(transitionDurationMs.toFloat()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Clip Transitions",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Choose entrance and blend transitions between clips",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Transition Duration: ${(currentDuration / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", fontSize = 12.sp)
+        }
+        Slider(
+            value = currentDuration,
+            onValueChange = { currentDuration = it },
+            valueRange = 200f..2000f,
+            steps = 9
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp)
+        ) {
+            items(TransitionType.values()) { trans ->
+                val isSelected = trans == selectedTransition
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ),
+                    modifier = Modifier
+                        .clickable {
+                            haptics.snap()
+                            onSelectTransition(trans, currentDuration.toLong())
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = trans.displayName,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            textAlign = TextAlign.Center,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DirectAnimationsSheet(
+    selectedAnimation: AnimationType,
+    onSelectAnimation: (AnimationType) -> Unit
+) {
+    val haptics = rememberHapticHelper()
+    var selectedCategory by remember { mutableStateOf("In") }
+    val categories = listOf("In", "Out", "Combo")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Clip Animations",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Apply dynamic entrance, exit, or loop animations to this clip",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categories.forEach { cat ->
+                val isCatSelected = cat == selectedCategory
+                Button(
+                    onClick = {
+                        haptics.tick()
+                        selectedCategory = cat
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCatSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = cat,
+                        fontSize = 12.sp,
+                        fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val filteredAnimations = AnimationType.values().filter { it.category == selectedCategory || it == AnimationType.None }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp)
+        ) {
+            items(filteredAnimations) { anim ->
+                val isSelected = anim == selectedAnimation
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ),
+                    modifier = Modifier
+                        .clickable {
+                            haptics.snap()
+                            onSelectAnimation(anim)
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = anim.label,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            textAlign = TextAlign.Center,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
