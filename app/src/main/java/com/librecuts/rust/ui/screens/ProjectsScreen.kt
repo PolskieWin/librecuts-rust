@@ -133,6 +133,7 @@ fun ProjectsScreen(
                         IconButton(onClick = { showThemeMenu = true }) {
                             Icon(
                                 imageVector = when (currentTheme) {
+                                    AppThemeMode.MATERIAL_YOU_AUTO -> Icons.Default.ColorLens
                                     AppThemeMode.LIGHT -> Icons.Default.LightMode
                                     AppThemeMode.DARK -> Icons.Default.DarkMode
                                     AppThemeMode.PURE_BLACK -> Icons.Default.ColorLens
@@ -146,6 +147,13 @@ fun ProjectsScreen(
                             expanded = showThemeMenu,
                             onDismissRequest = { showThemeMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("✨ Material You (Auto)") },
+                                onClick = {
+                                    onThemeChanged(AppThemeMode.MATERIAL_YOU_AUTO)
+                                    showThemeMenu = false
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("☀️ Light Mode") },
                                 onClick = {
@@ -554,3 +562,4 @@ fun ProjectCard(
         }
     }
 }
+

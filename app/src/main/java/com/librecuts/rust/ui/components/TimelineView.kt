@@ -9,26 +9,38 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +61,7 @@ fun TimelineView(
     onSeekPosition: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticHelper()
     var zoomScale by remember { mutableFloatStateOf(0.05f) } // pixels per millisecond
     val scrollState = rememberScrollState()
 
@@ -67,10 +80,21 @@ fun TimelineView(
         points.distinct()
     }
 
+    var lastSnappedMs by remember { mutableStateOf<Long?>(null) }
+
     fun applySnap(rawMs: Long): Long {
-        val thresholdMs = 150L
+        val thresholdMs = 120L
         val snapCandidate = snapPoints.find { Math.abs(it - rawMs) <= thresholdMs }
-        return snapCandidate ?: rawMs.coerceIn(0L, totalDurationMs)
+        return if (snapCandidate != null) {
+            if (lastSnappedMs != snapCandidate) {
+                haptics.snap()
+                lastSnappedMs = snapCandidate
+            }
+            snapCandidate
+        } else {
+            lastSnappedMs = null
+            rawMs.coerceIn(0L, totalDurationMs)
+        }
     }
 
     val transformState = rememberTransformableState { zoomChange, _, _ ->
@@ -117,7 +141,10 @@ fun TimelineView(
                     track = track,
                     scale = zoomScale,
                     selectedClipId = selectedClipId,
-                    onClipSelected = onClipSelected,
+                    onClipSelected = { clip ->
+                        haptics.tick()
+                        onClipSelected(clip)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -131,14 +158,24 @@ fun TimelineView(
         Canvas(
             modifier = Modifier
                 .offset(x = playheadOffsetDp)
-                .width(2.dp)
+                .width(4.dp)
                 .fillMaxSize()
         ) {
+            // Draw Playhead Top Flag
+            val headPath = Path().apply {
+                moveTo(-12f, 0f)
+                lineTo(12f, 0f)
+                lineTo(0f, 18f)
+                close()
+            }
+            drawPath(path = headPath, color = Color(0xFFFF5252))
+
+            // Playhead Vertical Line
             drawLine(
-                color = Color.Red,
+                color = Color(0xFFFF5252),
                 start = Offset(0f, 0f),
                 end = Offset(0f, size.height),
-                strokeWidth = 4f
+                strokeWidth = 3f
             )
         }
     }
@@ -183,11 +220,11 @@ private fun TrackRow(
 ) {
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
     ) {
         track.clips.forEach { clip ->
             val startDp = (clip.timeline_start_ms * scale).dp
-            val widthDp = (clip.durationMs * scale).coerceAtLeast(30f).dp
+            val widthDp = (clip.durationMs * scale).coerceAtLeast(36f).dp
             val isSelected = clip.id == selectedClipId
 
             val clipColor = when (track.track_type) {
@@ -203,20 +240,67 @@ private fun TrackRow(
                     .width(widthDp)
                     .fillMaxSize()
                     .padding(horizontal = 1.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(if (isSelected) MaterialTheme.colorScheme.primary else clipColor)
                     .pointerInput(clip.id) {
                         detectTapGestures { onClipSelected(clip) }
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = "${track.track_type.name}: ${clip.durationMs / 1000}s",
-                    fontSize = 11.sp,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
-                    modifier = Modifier.padding(horizontal = 6.dp),
-                    maxLines = 1
-                )
+                // Audio Waveform Simulation Canvas
+                if (track.track_type == TrackType.Audio) {
+                    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+                        val numBars = (size.width / 6f).toInt().coerceAtLeast(5)
+                        for (i in 0 until numBars) {
+                            val barX = i * 6f
+                            val pseudoHeight = ((Math.sin(i * 0.8) + 1.2) * (size.height / 3f)).toFloat()
+                            val topY = (size.height - pseudoHeight) / 2f
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.3f),
+                                start = Offset(barX, topY),
+                                end = Offset(barX, topY + pseudoHeight),
+                                strokeWidth = 2.5f
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = when (track.track_type) {
+                            TrackType.Video -> Icons.Default.Videocam
+                            TrackType.Audio -> Icons.Default.GraphicEq
+                            TrackType.Overlay -> Icons.Default.Videocam
+                            TrackType.Text -> Icons.Default.TextFields
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${clip.durationMs / 1000}s",
+                        fontSize = 11.sp,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
+                        maxLines = 1
+                    )
+                }
+
+                // Render Keyframe Diamond Markers on Clip
+                clip.keyframes.forEach { kf ->
+                    val kfOffsetDp = (kf.timeMs * scale).dp
+                    Box(
+                        modifier = Modifier
+                            .offset(x = kfOffsetDp)
+                            .align(Alignment.CenterStart)
+                            .size(10.dp)
+                            .rotate(45f)
+                            .background(Color(0xFFFFEB3B), RoundedCornerShape(2.dp))
+                    )
+                }
             }
         }
     }

@@ -55,6 +55,15 @@ pub enum EffectConfig {
         y: f32,
         color_rgba: u32,
     },
+    ShapeMask {
+        shape: String,
+        center_x: f32,
+        center_y: f32,
+        size_x: f32,
+        size_y: f32,
+        feather: f32,
+        invert: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -71,6 +71,18 @@ sealed class EffectConfig {
         val y: Float = 0.8f,
         val color_rgba: Long = 0xFFFFFFFFL
     ) : EffectConfig()
+
+    @Serializable
+    @SerialName("ShapeMask")
+    data class ShapeMask(
+        val shape: String = "rectangle", // "rectangle", "circle", "heart", "linear"
+        val center_x: Float = 0.5f,
+        val center_y: Float = 0.5f,
+        val size_x: Float = 0.4f,
+        val size_y: Float = 0.4f,
+        val feather: Float = 0.05f,
+        val invert: Boolean = false
+    ) : EffectConfig()
 }
 
 @Serializable

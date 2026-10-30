@@ -1,6 +1,6 @@
 [package]
 name = "librecut-engine"
-version = "2.0.0"
+version = "2.2.0"
 edition = "2021"
 authors = ["LibreCut Contributors", "Jakub"]
 description = "High-performance Rust video editing and rendering engine for Android 14+ (LibreCuts Fork)"

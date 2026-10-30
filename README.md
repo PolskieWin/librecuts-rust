@@ -60,27 +60,32 @@ flowchart TD
 
 1. **Smart Render (Lossless Cut/Trim)**:
    - When trimming or splitting without visual filters, the engine extracts raw H.264/HEVC NAL units and muxes them directly without decoding or re-encoding. A 10-minute 4K video can be cut in **0.3 seconds**.
-2. **SIMD Chroma Key (Green Screen)**:
-   - Real-time green/blue screen removal with customizable similarity thresholds, edge softness, and **despill suppression** to eliminate green bounce from actor hair and clothes.
-3. **Multi-Track Timeline**:
-   - Supports dedicated tracks for primary video, background audio, voiceovers, picture-in-picture (PiP) overlays, and subtitles.
-4. **200% Audio Booster with Soft Limiter**:
-   - Boost whisper-quiet clips up to 200% without digital clipping or harsh distortion using a hyperbolic tangent (`tanh`) soft-knee limiter.
-5. **Project Management System (CapCut / Premiere Rush style)**:
-   - Create and organize multiple editing projects with custom titles and aspect ratios (16:9 YouTube, 9:16 TikTok/Reels, 1:1 Square).
-   - Saved persistently offline with automatic auto-save on every edit, with rename, duplicate, and delete actions.
-6. **Light Mode, Dark Mode & Pure Black (OLED Mode)**:
-   - Built-in dynamic theme switcher supporting clean modern Light Mode, Material 3 Dark Mode, and True Black (`#000000`) OLED Mode for maximum battery conservation and contrast.
-7. **Undo & Redo History**:
-   - Comprehensive multi-level history stack allowing instant undo ($\curvearrowleft$) and redo ($\curvearrowright$) for splits, cuts, trims, deletions, and filter adjustments.
-8. **Text & Subtitle Overlays**:
-   - Add text captions, titles, or subtitles directly on video clips with customizable text and font sizes.
-9. **Magnetic Snapping & Smooth Scrubber**:
-   - Timeline features frame-accurate magnetic snapping to clip cut-points and boundaries.
-10. **100% Offline & F-Droid Ready**:
-   - Zero internet permissions requested in `AndroidManifest.xml`.
-   - Zero trackers, zero analytics, zero ads, zero watermarks.
-   - Includes reproducible build recipe for F-Droid (`fdroid/metadata/com.librecuts.rust.yml`).
+2. **Vulkan GPU Compute & SIMD Acceleration**:
+   - Hardware-accelerated Vulkan compute dispatch with multi-threaded Rayon SIMD fallback for real-time 60fps color grading, LUT transforms, and filter pipelines.
+3. **Extensible Community Plugin Architecture**:
+   - Community developers can create, distribute, and install custom shader filters and audio DSP modules via `.lcplugin` bundles.
+   - Built-in community plugins included out-of-the-box: *Chromatic Glitch FX*, *VHS 1986 Retro Cam*, *Anamorphic Blue Flare*, and *Vocal Clarity Studio Pro*, complete with real-time parameter tuning sliders.
+4. **Tactile Haptic Feedback Engine**:
+   - Rich tactile feedback for timeline interactions: magnetic snap clicks on clip boundaries, dual-clicks on split cuts, tick vibrations on playhead frame scrubbing, and heavy feedback on deletions.
+5. **Shape Masking & Keyframing**:
+   - Circle/Ellipse, Rectangle, Heart, and Linear Wipe masks with adjustable radius, edge feather softness, and alpha inversion.
+   - Keyframe marker placement for animating scale, position, rotation, and opacity across time.
+6. **Voiceover Microphone Recorder**:
+   - Record live microphone narration directly onto dedicated timeline audio tracks with a live recording timer and auto-clip synchronization.
+7. **SRT Subtitle Importer**:
+   - One-tap import of standard `.srt` subtitle files, parsed and mapped into editable text overlay clips aligned with speech timestamps.
+8. **SIMD Chroma Key (Green Screen)**:
+   - Real-time green/blue screen removal with customizable similarity thresholds, edge softness, and **despill suppression** to eliminate green bounce.
+9. **Project Management System (CapCut / Premiere Rush style)**:
+   - Create and organize multiple editing projects with custom titles and aspect ratios (16:9 YouTube, 9:16 TikTok/Reels, 1:1 Square) with persistent auto-save, rename, duplicate, and delete actions.
+10. **Material You Dynamic Theming + Pure Black OLED**:
+    - Material 3 dynamic color extraction with auto wallpaper adaptation, Light Mode, Dark Mode, and True Black (#000000) OLED Mode.
+11. **200% Audio Booster with Soft Limiter**:
+    - Boost whisper-quiet clips up to 200% without digital clipping or harsh distortion using a hyperbolic tangent (`tanh`) soft-knee limiter.
+12. **100% Offline & F-Droid Ready**:
+    - Zero internet permissions requested in `AndroidManifest.xml`.
+    - Zero trackers, zero analytics, zero ads, zero watermarks.
+    - Includes reproducible build recipe for F-Droid (`fdroid/metadata/com.librecuts.rust.yml`).
 
 ---
 

@@ -1,8 +1,12 @@
 package com.librecuts.rust.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -23,11 +29,16 @@ import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,11 +50,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -57,22 +70,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.librecuts.rust.engine.AudioRecorderHelper
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.EffectConfig
 import com.librecuts.rust.engine.ExportManager
 import com.librecuts.rust.engine.FileUtils
+import com.librecuts.rust.engine.Keyframe
+import com.librecuts.rust.engine.Project
+import com.librecuts.rust.engine.SrtParser
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
+import com.librecuts.rust.plugin.PluginManager
 import com.librecuts.rust.ui.components.TimelineView
 import com.librecuts.rust.ui.components.VideoPreviewPlayer
+import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppThemeMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
-
-import com.librecuts.rust.engine.Project
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +105,9 @@ fun EditorScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptics = rememberHapticHelper()
+    val pluginManager = remember { PluginManager(context) }
+    val audioRecorder = remember { AudioRecorderHelper(context) }
     val exportManager = remember { ExportManager(context) }
     val exportState by exportManager.exportState.collectAsState()
 
@@ -93,7 +116,12 @@ fun EditorScreen(
     var selectedClipId by remember { mutableStateOf<String?>(null) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showEffectsSheet by remember { mutableStateOf(false) }
+    var showPluginManagerSheet by remember { mutableStateOf(false) }
     var showThemeMenu by remember { mutableStateOf(false) }
+    var showImportMenu by remember { mutableStateOf(false) }
+
+    var isRecordingVoiceover by remember { mutableStateOf(false) }
+    var recordElapsedSeconds by remember { mutableLongStateOf(0L) }
 
     // Multi-track composition state loaded directly from the project
     var composition by remember(project.id) {
@@ -110,7 +138,7 @@ fun EditorScreen(
         onSaveProject(project.copy(composition = newComp))
     }
 
-    // Modern Android 14+ Photo & Video Picker contract with local cached path resolution
+    // Modern Android 14+ Media Pickers
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -135,6 +163,61 @@ fun EditorScreen(
                 }
                 updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                 selectedClipId = clipId
+                haptics.split()
+            }
+        }
+    }
+
+    val srtPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                try {
+                    context.contentResolver.openInputStream(it)?.use { stream ->
+                        val entries = SrtParser.parse(stream)
+                        val textClips = SrtParser.toClips(entries)
+                        if (textClips.isNotEmpty()) {
+                            val updatedTracks = composition.tracks.map { track ->
+                                if (track.track_type == TrackType.Text) {
+                                    track.copy(clips = track.clips + textClips)
+                                } else {
+                                    track
+                                }
+                            }
+                            updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                            haptics.split()
+                            Toast.makeText(context, "Imported ${textClips.size} subtitles!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to parse .srt file", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted: Boolean ->
+        if (granted) {
+            val started = audioRecorder.startRecording()
+            if (started) {
+                isRecordingVoiceover = true
+                recordElapsedSeconds = 0L
+                haptics.snap()
+            }
+        } else {
+            Toast.makeText(context, "Microphone permission required for voiceover", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Voiceover timer ticker
+    LaunchedEffect(isRecordingVoiceover) {
+        if (isRecordingVoiceover) {
+            while (isRecordingVoiceover) {
+                delay(1000L)
+                recordElapsedSeconds++
             }
         }
     }
@@ -147,7 +230,10 @@ fun EditorScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBackToProjects) {
+                    IconButton(onClick = {
+                        haptics.tick()
+                        onBackToProjects()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back to Projects",
@@ -156,12 +242,19 @@ fun EditorScreen(
                     }
                 },
                 title = {
-                    Text(
-                        text = project.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
-                    )
+                    Column {
+                        Text(
+                            text = project.title,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "${project.aspectRatio.label} • Rust Vulkan Hardware Accel",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -171,6 +264,7 @@ fun EditorScreen(
                     IconButton(
                         onClick = {
                             if (undoStack.isNotEmpty()) {
+                                haptics.tick()
                                 val prev = undoStack.removeAt(undoStack.lastIndex)
                                 redoStack.add(composition)
                                 composition = prev
@@ -189,6 +283,7 @@ fun EditorScreen(
                     IconButton(
                         onClick = {
                             if (redoStack.isNotEmpty()) {
+                                haptics.tick()
                                 val next = redoStack.removeAt(redoStack.lastIndex)
                                 undoStack.add(composition)
                                 composition = next
@@ -203,11 +298,27 @@ fun EditorScreen(
                         )
                     }
 
+                    // Plugins Framework Button
+                    IconButton(onClick = {
+                        haptics.tick()
+                        showPluginManagerSheet = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Extension,
+                            contentDescription = "Community Plugins",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     // Theme Switcher Menu
                     Box {
-                        IconButton(onClick = { showThemeMenu = true }) {
+                        IconButton(onClick = {
+                            haptics.tick()
+                            showThemeMenu = true
+                        }) {
                             Icon(
                                 imageVector = when (currentTheme) {
+                                    AppThemeMode.MATERIAL_YOU_AUTO -> Icons.Default.ColorLens
                                     AppThemeMode.LIGHT -> Icons.Default.LightMode
                                     AppThemeMode.DARK -> Icons.Default.DarkMode
                                     AppThemeMode.PURE_BLACK -> Icons.Default.ColorLens
@@ -221,6 +332,13 @@ fun EditorScreen(
                             expanded = showThemeMenu,
                             onDismissRequest = { showThemeMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("✨ Material You (Auto)") },
+                                onClick = {
+                                    onThemeChanged(AppThemeMode.MATERIAL_YOU_AUTO)
+                                    showThemeMenu = false
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("☀️ Light Mode") },
                                 onClick = {
@@ -245,32 +363,62 @@ fun EditorScreen(
                         }
                     }
 
-                    // Import Video Button
-                    Button(
-                        onClick = { videoPickerLauncher.launch("video/*") },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Import", tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Import")
+                    // Import Media Menu
+                    Box {
+                        Button(
+                            onClick = {
+                                haptics.tick()
+                                showImportMenu = true
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Import", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add", fontSize = 13.sp)
+                        }
+
+                        DropdownMenu(
+                            expanded = showImportMenu,
+                            onDismissRequest = { showImportMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("🎥 Video / Image Clip") },
+                                onClick = {
+                                    showImportMenu = false
+                                    videoPickerLauncher.launch("video/*")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("📄 Subtitles (.srt)") },
+                                onClick = {
+                                    showImportMenu = false
+                                    srtPickerLauncher.launch("*/*")
+                                }
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(6.dp))
 
                     // Export Button
                     Button(
-                        onClick = { showExportDialog = true },
+                        onClick = {
+                            haptics.snap()
+                            showExportDialog = true
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                        ),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.FileUpload, contentDescription = "Export")
+                        Icon(Icons.Default.FileUpload, contentDescription = "Export", modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export")
+                        Text("Export", fontSize = 13.sp)
                     }
                 }
             )
@@ -303,6 +451,37 @@ fun EditorScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
+                // Voiceover Recording Status Banner
+                AnimatedVisibility(
+                    visible = isRecordingVoiceover,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Red.copy(alpha = 0.85f),
+                        shadowElevation = 6.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Recording Voiceover: ${recordElapsedSeconds}s",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
                 // Render Active Text Overlays if present on active clip
                 val activeTextOverlay = composition.tracks
                     .flatMap { it.clips }
@@ -317,7 +496,7 @@ fun EditorScreen(
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 24.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
+                            .background(Color.Black.copy(alpha = 0.7f))
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
@@ -329,18 +508,21 @@ fun EditorScreen(
                 }
             }
 
-            // Timeline Action Controls
+            // Timeline Action Controls Toolbar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(52.dp)
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Play / Pause Toggle
-                IconButton(onClick = { isPlaying = !isPlaying }) {
+                IconButton(onClick = {
+                    haptics.tick()
+                    isPlaying = !isPlaying
+                }) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play/Pause",
@@ -348,13 +530,14 @@ fun EditorScreen(
                     )
                 }
 
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     // Split at Playhead
                     IconButton(
                         onClick = {
                             selectedClip?.let { clip ->
                                 val splitOffset = currentPositionMs - clip.timeline_start_ms
                                 if (splitOffset in 100 until clip.durationMs) {
+                                    haptics.split()
                                     val firstHalf = clip.copy(
                                         id = UUID.randomUUID().toString(),
                                         source_end_ms = clip.source_start_ms + splitOffset
@@ -384,9 +567,91 @@ fun EditorScreen(
                         )
                     }
 
-                    // Effects / Filters / Chroma Key / Text Sheet
+                    // Keyframe Button (Diamond)
                     IconButton(
-                        onClick = { showEffectsSheet = true },
+                        onClick = {
+                            selectedClip?.let { clip ->
+                                val offsetMs = (currentPositionMs - clip.timeline_start_ms).coerceIn(0L, clip.durationMs)
+                                val hasKeyframe = clip.keyframes.any { Math.abs(it.timeMs - offsetMs) < 150L }
+                                val updatedKeyframes = if (hasKeyframe) {
+                                    clip.keyframes.filterNot { Math.abs(it.timeMs - offsetMs) < 150L }
+                                } else {
+                                    clip.keyframes + Keyframe(timeMs = offsetMs)
+                                }
+                                val updatedTracks = composition.tracks.map { track ->
+                                    track.copy(clips = track.clips.map {
+                                        if (it.id == clip.id) it.copy(keyframes = updatedKeyframes) else it
+                                    })
+                                }
+                                haptics.snap()
+                                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                            }
+                        },
+                        enabled = selectedClip != null
+                    ) {
+                        Icon(
+                            Icons.Default.Diamond,
+                            contentDescription = "Keyframe",
+                            tint = if (selectedClip != null) Color(0xFFFFEB3B) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+
+                    // Voiceover Mic Button
+                    IconButton(
+                        onClick = {
+                            if (isRecordingVoiceover) {
+                                // Stop voiceover
+                                val result = audioRecorder.stopRecording()
+                                isRecordingVoiceover = false
+                                if (result != null) {
+                                    haptics.split()
+                                    val audioClip = Clip(
+                                        id = UUID.randomUUID().toString(),
+                                        file_path = result.filePath,
+                                        source_start_ms = 0L,
+                                        source_end_ms = result.durationMs,
+                                        timeline_start_ms = currentPositionMs
+                                    )
+                                    val updatedTracks = composition.tracks.map { track ->
+                                        if (track.track_type == TrackType.Audio) {
+                                            track.copy(clips = track.clips + audioClip)
+                                        } else track
+                                    }
+                                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                                    Toast.makeText(context, "Voiceover added to audio track!", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                // Start recording
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (hasPermission) {
+                                    if (audioRecorder.startRecording()) {
+                                        isRecordingVoiceover = true
+                                        recordElapsedSeconds = 0L
+                                        haptics.snap()
+                                    }
+                                } else {
+                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isRecordingVoiceover) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = "Voiceover",
+                            tint = if (isRecordingVoiceover) Color.Red else MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Effects / Filters / Chroma Key / Masking Sheet
+                    IconButton(
+                        onClick = {
+                            haptics.tick()
+                            showEffectsSheet = true
+                        },
                         enabled = selectedClip != null
                     ) {
                         Icon(
@@ -400,6 +665,7 @@ fun EditorScreen(
                     IconButton(
                         onClick = {
                             selectedClipId?.let { id ->
+                                haptics.heavy()
                                 val updatedTracks = composition.tracks.map { track ->
                                     track.copy(clips = track.clips.filterNot { it.id == id })
                                 }
@@ -451,6 +717,20 @@ fun EditorScreen(
                     }
                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                 }
+            )
+        }
+    }
+
+    // Community Plugins Bottom Sheet
+    if (showPluginManagerSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPluginManagerSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            PluginManagerSheet(
+                pluginManager = pluginManager,
+                onDismiss = { showPluginManagerSheet = false }
             )
         }
     }

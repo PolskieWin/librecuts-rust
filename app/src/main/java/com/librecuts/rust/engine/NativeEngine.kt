@@ -24,6 +24,7 @@ object NativeEngine {
 
     external fun nativeInit(): Boolean
     external fun nativeGetVersion(): String
+    external fun nativeGetVulkanInfo(): String
     external fun nativeProbeMedia(filePath: String): String
     external fun nativeFastTrim(
         inputPath: String,
@@ -42,6 +43,11 @@ object NativeEngine {
 
     fun init(): Boolean = nativeInit()
     fun getVersion(): String = nativeGetVersion()
+    fun getVulkanInfo(): JSONObject = try {
+        JSONObject(nativeGetVulkanInfo())
+    } catch (e: Exception) {
+        JSONObject("""{"supported":false,"device":"Fallback","api":"N/A"}""")
+    }
 
     fun probe(filePath: String): JSONObject {
         val resultStr = nativeProbeMedia(filePath)

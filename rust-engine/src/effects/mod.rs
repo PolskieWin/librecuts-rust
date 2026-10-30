@@ -1,6 +1,7 @@
 pub mod chroma_key;
 pub mod color_grading;
 pub mod filters;
+pub mod mask;
 pub mod transform;
 
 use crate::timeline::track::EffectConfig;
@@ -63,6 +64,28 @@ pub fn apply_effect_chain(rgba_buffer: &mut [u8], width: u32, height: u32, effec
             }
             EffectConfig::TextOverlay { .. } => {
                 // Text overlay rendered on frame
+            }
+            EffectConfig::ShapeMask {
+                shape,
+                center_x,
+                center_y,
+                size_x,
+                size_y,
+                feather,
+                invert,
+            } => {
+                mask::apply_shape_mask(
+                    rgba_buffer,
+                    width,
+                    height,
+                    shape,
+                    *center_x,
+                    *center_y,
+                    *size_x,
+                    *size_y,
+                    *feather,
+                    *invert,
+                );
             }
         }
     }

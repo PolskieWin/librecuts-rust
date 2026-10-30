@@ -40,8 +40,23 @@ pub extern "system" fn Java_com_librecuts_rust_engine_NativeEngine_nativeGetVers
     env: JNIEnv,
     _class: JClass,
 ) -> jstring {
-    let version = "LibreCut-Rust 2.0.0 (SIMD + NDK Hardware Acceleration)";
+    let version = "LibreCut-Rust 2.2.0 (Vulkan GPU Compute + Rayon SIMD + NDK Hardware Acceleration)";
     let output = env.new_string(version).expect("Couldn't create java string");
+    output.into_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_librecuts_rust_engine_NativeEngine_nativeGetVulkanInfo(
+    env: JNIEnv,
+    _class: JClass,
+) -> jstring {
+    let ctx = crate::codec::vulkan_renderer::VulkanContext::probe();
+    let json = serde_json::json!({
+        "supported": ctx.is_supported,
+        "device": ctx.device_name,
+        "api": ctx.api_version,
+    });
+    let output = env.new_string(json.to_string()).expect("Couldn't create java string");
     output.into_raw()
 }
 
