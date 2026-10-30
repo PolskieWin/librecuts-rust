@@ -378,7 +378,7 @@ fun VideoPreviewPlayer(
     val transDuration = activeClip?.transitionDurationMs ?: 500L
     val transProgress = (clipElapsedMs.toFloat() / transDuration.coerceAtLeast(200L)).coerceIn(0f, 1f)
     when (activeClip?.transition) {
-        TransitionType.CrossDissolve, TransitionType.Fade -> {
+        TransitionType.CrossDissolve, TransitionType.FadeToBlack -> {
             liveAnimAlpha *= transProgress
         }
         TransitionType.SlideLeft -> {
