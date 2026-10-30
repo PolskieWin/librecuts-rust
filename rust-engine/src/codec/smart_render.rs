@@ -25,9 +25,10 @@ pub fn fast_trim_video(
 
         let c_input = CString::new(input_path).map_err(|e| e.to_string())?;
         let set_res = AMediaExtractor_setDataSource(extractor, c_input.as_ptr());
-        if set_res as i32 != 0 {
+        let is_set_err: i32 = std::mem::transmute(set_res);
+        if is_set_err != 0 {
             AMediaExtractor_delete(extractor);
-            return Err(format!("AMediaExtractor_setDataSource failed with code {:?}", set_res));
+            return Err(format!("AMediaExtractor_setDataSource failed with code {}", is_set_err));
         }
 
         // Open Output File Descriptor for AMediaMuxer
@@ -70,7 +71,8 @@ pub fn fast_trim_video(
         }
 
         let mux_start_res = AMediaMuxer_start(muxer);
-        if mux_start_res as i32 != 0 {
+        let is_mux_err: i32 = std::mem::transmute(mux_start_res);
+        if is_mux_err != 0 {
             AMediaMuxer_delete(muxer);
             libc::close(output_fd);
             AMediaExtractor_delete(extractor);

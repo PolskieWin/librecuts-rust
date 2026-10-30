@@ -1,4 +1,4 @@
-use log::{error, info, warn};
+use log::error;
 use ndk_sys::*;
 use std::ffi::CString;
 
@@ -21,7 +21,9 @@ pub fn probe_media(file_path: &str) -> Result<MediaProbeResult, String> {
         }
 
         let c_path = CString::new(file_path).map_err(|e| e.to_string())?;
-        if (AMediaExtractor_setDataSource(extractor, c_path.as_ptr()) as i32) != 0 {
+        let set_res = AMediaExtractor_setDataSource(extractor, c_path.as_ptr());
+        let is_set_err: i32 = std::mem::transmute(set_res);
+        if is_set_err != 0 {
             AMediaExtractor_delete(extractor);
             return Err("Failed to read data source for probe".into());
         }
