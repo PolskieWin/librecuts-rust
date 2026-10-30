@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -388,7 +389,7 @@ fun SettingsScreen(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text("Import Font", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                            Text(strings.importFont, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
 
@@ -396,13 +397,18 @@ fun SettingsScreen(
 
                     // Available Fonts Chips
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         availableFonts.forEach { fontOpt ->
                             FilterChip(
                                 selected = false,
-                                onClick = {},
+                                onClick = {
+                                    haptics.tick()
+                                    Toast.makeText(context, "${fontOpt.name} active", Toast.LENGTH_SHORT).show()
+                                },
                                 label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                             )
                         }

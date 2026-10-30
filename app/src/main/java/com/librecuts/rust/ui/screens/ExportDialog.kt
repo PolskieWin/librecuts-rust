@@ -218,7 +218,7 @@ fun ExportDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(strings.smartRender, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
-                                Text("Lossless direct stream copy when no filters are applied", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                                Text(strings.smartRenderDesc, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                             }
                             Switch(
                                 checked = smartRender,

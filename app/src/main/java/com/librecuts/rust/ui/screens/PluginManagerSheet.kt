@@ -61,6 +61,7 @@ import com.librecuts.rust.plugin.ParamType
 import com.librecuts.rust.plugin.PluginCategory
 import com.librecuts.rust.plugin.PluginManager
 import com.librecuts.rust.ui.components.rememberHapticHelper
+import com.librecuts.rust.ui.theme.LocalAppStrings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,6 +73,7 @@ fun PluginManagerSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     val plugins by pluginManager.plugins.collectAsState()
 
     var selectedCategory by remember { mutableStateOf<PluginCategory?>(null) }
@@ -158,13 +160,13 @@ fun PluginManagerSheet(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.FileUpload, contentDescription = "Import Plugin", modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.FileUpload, contentDescription = strings.importPlugin, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Import (.lcplugin)", fontSize = 13.sp)
+                Text(strings.importPlugin, fontSize = 13.sp)
             }
 
             Text(
-                text = "${filteredPlugins.count { it.enabled }} active / ${filteredPlugins.size} installed",
+                text = "${filteredPlugins.count { it.enabled }} / ${filteredPlugins.size}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -183,7 +185,7 @@ fun PluginManagerSheet(
                     haptics.tick()
                     selectedCategory = null
                 },
-                label = { Text("All (${plugins.size})", fontSize = 12.sp) }
+                label = { Text("${strings.pluginCatAll} (${plugins.size})", fontSize = 12.sp) }
             )
             FilterChip(
                 selected = selectedCategory == PluginCategory.EFFECT,
@@ -192,7 +194,7 @@ fun PluginManagerSheet(
                     selectedCategory = PluginCategory.EFFECT
                 },
                 leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                label = { Text("Effects", fontSize = 12.sp) }
+                label = { Text(strings.pluginCatEffects, fontSize = 12.sp) }
             )
             FilterChip(
                 selected = selectedCategory == PluginCategory.FILTER,
@@ -201,7 +203,7 @@ fun PluginManagerSheet(
                     selectedCategory = PluginCategory.FILTER
                 },
                 leadingIcon = { Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                label = { Text("Filters", fontSize = 12.sp) }
+                label = { Text(strings.pluginCatFilters, fontSize = 12.sp) }
             )
             FilterChip(
                 selected = selectedCategory == PluginCategory.AUDIO,
@@ -210,7 +212,7 @@ fun PluginManagerSheet(
                     selectedCategory = PluginCategory.AUDIO
                 },
                 leadingIcon = { Icon(Icons.Default.GraphicEq, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                label = { Text("Audio", fontSize = 12.sp) }
+                label = { Text(strings.pluginCatAudio, fontSize = 12.sp) }
             )
             FilterChip(
                 selected = selectedCategory == PluginCategory.UI_LAYOUT,
@@ -219,7 +221,7 @@ fun PluginManagerSheet(
                     selectedCategory = PluginCategory.UI_LAYOUT
                 },
                 leadingIcon = { Icon(Icons.Default.Dashboard, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                label = { Text("UI Layouts", fontSize = 12.sp) }
+                label = { Text(strings.pluginCatUiLayouts, fontSize = 12.sp) }
             )
         }
 

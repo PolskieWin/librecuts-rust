@@ -285,20 +285,20 @@ fun EffectsSheet(
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.backgroundRemoval, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
-                        Text("Auto cutout subject without green screen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(strings.autoCutoutDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                     Switch(checked = bgRemovalEnabled, onCheckedChange = { haptics.tick(); bgRemovalEnabled = it; syncAll() })
                 }
                 if (bgRemovalEnabled) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text("Cutout Sensitivity: ${(bgRemovalThreshold * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("${strings.cutoutSensitivity}: ${(bgRemovalThreshold * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = bgRemovalThreshold, onValueChange = { bgRemovalThreshold = it; syncAll() }, valueRange = 0.1f..0.9f)
 
-                    Text("Edge Feather: ${(bgRemovalFeather * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("${strings.edgeFeather}: ${(bgRemovalFeather * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = bgRemovalFeather, onValueChange = { bgRemovalFeather = it; syncAll() }, valueRange = 0.01f..0.25f)
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Invert Cutout", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text(strings.invertCutout, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Switch(checked = bgRemovalInvert, onCheckedChange = { bgRemovalInvert = it; syncAll() })
                     }
                 }
@@ -309,7 +309,7 @@ fun EffectsSheet(
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.chromaKey, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-                        Text("SIMD green/blue screen removal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(strings.simdChromaDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                     Switch(checked = chromaEnabled, onCheckedChange = { haptics.tick(); chromaEnabled = it; syncAll() })
                 }
@@ -382,12 +382,12 @@ fun EffectsSheet(
             1 -> {
                 Text(strings.animations, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Select In, Out, or Combo animation to give movement to clips", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(strings.animationDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 listOf("In", "Out", "Combo").forEach { cat ->
                     Text(
-                        text = "$cat Animations",
+                        text = "$cat ${strings.animations}",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -447,7 +447,7 @@ fun EffectsSheet(
             2 -> {
                 Text(strings.transitions, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Select an outgoing transition effect for this clip boundary", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(strings.transitionDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 TransitionType.values().forEach { trans ->
@@ -522,7 +522,7 @@ fun EffectsSheet(
                 // Speed Curves (Speed Ramping)
                 Text(strings.speedCurve, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Dynamic acceleration and slow-motion curves", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(strings.speedCurveDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(10.dp))
 
                 SpeedCurveType.values().forEach { curve ->
@@ -606,25 +606,25 @@ fun EffectsSheet(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text("Crop Top: ${(cropTop * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                Text("${strings.cropTop}: ${(cropTop * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Slider(value = cropTop, onValueChange = { cropTop = it; syncAll() }, valueRange = 0.0f..0.4f)
 
-                Text("Crop Bottom: ${(cropBottom * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                Text("${strings.cropBottom}: ${(cropBottom * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Slider(value = cropBottom, onValueChange = { cropBottom = it; syncAll() }, valueRange = 0.0f..0.4f)
 
-                Text("Crop Left: ${(cropLeft * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                Text("${strings.cropLeft}: ${(cropLeft * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Slider(value = cropLeft, onValueChange = { cropLeft = it; syncAll() }, valueRange = 0.0f..0.4f)
 
-                Text("Crop Right: ${(cropRight * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                Text("${strings.cropRight}: ${(cropRight * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Slider(value = cropRight, onValueChange = { cropRight = it; syncAll() }, valueRange = 0.0f..0.4f)
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Flip Horizontal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.flipHorizontal, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Switch(checked = flipH, onCheckedChange = { flipH = it; syncAll() })
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Flip Vertical", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.flipVertical, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Switch(checked = flipV, onCheckedChange = { flipV = it; syncAll() })
                 }
             }
@@ -634,7 +634,7 @@ fun EffectsSheet(
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.shapeMask, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-                        Text("Circle, rectangle, heart curve & linear wipe mask", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(strings.shapeMaskDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                     Switch(checked = maskEnabled, onCheckedChange = { haptics.tick(); maskEnabled = it; syncAll() })
                 }
@@ -658,7 +658,7 @@ fun EffectsSheet(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Mask Size: ${"%.2f".format(maskSize)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("${strings.maskSize}: ${"%.2f".format(maskSize)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = maskSize, onValueChange = { maskSize = it; syncAll() }, valueRange = 0.1f..0.9f)
 
                     Text("${strings.maskFeather}: ${"%.2f".format(maskFeather)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
@@ -676,7 +676,7 @@ fun EffectsSheet(
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.textOverlay, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-                        Text("Add titles and custom-styled subtitles", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(strings.textOverlayDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                     Switch(checked = textOverlayEnabled, onCheckedChange = { haptics.tick(); textOverlayEnabled = it; syncAll() })
                 }
@@ -686,13 +686,13 @@ fun EffectsSheet(
                     OutlinedTextField(
                         value = overlayText,
                         onValueChange = { overlayText = it; syncAll() },
-                        label = { Text("Overlay Text") },
+                        label = { Text(strings.overlayTextLabel) },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Font Size: ${overlayFontSize.toInt()}sp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("${strings.fontSizeLabel}: ${overlayFontSize.toInt()}sp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = overlayFontSize, onValueChange = { overlayFontSize = it; syncAll() }, valueRange = 14f..64f)
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -716,7 +716,7 @@ fun EffectsSheet(
                         ) {
                             Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Import Font", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                            Text(strings.importFont, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
 

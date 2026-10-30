@@ -9,16 +9,16 @@ This project is a high-performance native fork and architectural rewrite of [Lib
 
 ---
 
-## Direct Download (Latest Release v2.4.3)
+## Direct Download (Latest Release v2.4.4)
 
 Download the stable APK for your Android device:
 
 | Package | Architecture | Direct Download Link | Size |
 |---|---|---|---|
-| **Universal APK** | All Architectures (arm64-v8a, armeabi-v7a, x86_64) | [Download Universal APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.3-universal.apk) | ~4.5 MB |
-| **ARMv8 64-bit APK** | Modern 64-bit Smartphones | [Download arm64-v8a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.3-arm64-v8a.apk) | ~3.1 MB |
-| **ARMv7 32-bit APK** | Legacy 32-bit Devices & Tablets | [Download armeabi-v7a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.3-armeabi-v7a.apk) | ~2.8 MB |
-| **x86_64 APK** | Android Emulators & Chromebooks | [Download x86_64 APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.3-x86_64.apk) | ~3.1 MB |
+| **Universal APK** | All Architectures (arm64-v8a, armeabi-v7a, x86_64) | [Download Universal APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-universal.apk) | ~4.5 MB |
+| **ARMv8 64-bit APK** | Modern 64-bit Smartphones | [Download arm64-v8a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-arm64-v8a.apk) | ~3.1 MB |
+| **ARMv7 32-bit APK** | Legacy 32-bit Devices & Tablets | [Download armeabi-v7a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-armeabi-v7a.apk) | ~2.8 MB |
+| **x86_64 APK** | Android Emulators & Chromebooks | [Download x86_64 APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-x86_64.apk) | ~3.1 MB |
 
 All releases can also be found on the [GitHub Releases Page](https://github.com/PolskieWin/librecuts-rust/releases/latest).
 

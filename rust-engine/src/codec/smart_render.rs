@@ -23,6 +23,11 @@ pub fn fast_trim_video(
             return Err("Failed to create AMediaExtractor".into());
         }
 
+        // Ensure target directory exists
+        if let Some(parent) = std::path::Path::new(output_path).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
         let c_input = CString::new(input_path).map_err(|e| e.to_string())?;
         let set_res = AMediaExtractor_setDataSource(extractor, c_input.as_ptr());
         let is_set_err: i32 = std::mem::transmute(set_res);
@@ -56,6 +61,7 @@ pub fn fast_trim_video(
 
         let num_tracks = AMediaExtractor_getTrackCount(extractor);
         let mut track_map: Vec<isize> = Vec::with_capacity(num_tracks);
+        let mut added_any_track = false;
 
         for i in 0..num_tracks {
             let format = AMediaExtractor_getTrackFormat(extractor, i);
@@ -64,10 +70,22 @@ pub fn fast_trim_video(
                 continue;
             }
 
-            AMediaExtractor_selectTrack(extractor, i);
             let muxer_track = AMediaMuxer_addTrack(muxer, format);
-            track_map.push(muxer_track as isize);
+            if muxer_track >= 0 {
+                AMediaExtractor_selectTrack(extractor, i);
+                track_map.push(muxer_track as isize);
+                added_any_track = true;
+            } else {
+                track_map.push(-1);
+            }
             AMediaFormat_delete(format);
+        }
+
+        if !added_any_track {
+            AMediaMuxer_delete(muxer);
+            libc::close(output_fd);
+            AMediaExtractor_delete(extractor);
+            return Err("No compatible tracks found to mux".into());
         }
 
         let mux_start_res = AMediaMuxer_start(muxer);
@@ -81,7 +99,7 @@ pub fn fast_trim_video(
 
         // Seek to start position (in microseconds)
         let seek_us = (start_ms * 1000) as i64;
-        let end_us = (end_ms * 1000) as i64;
+        let end_us = if end_ms > start_ms { (end_ms * 1000) as i64 } else { i64::MAX };
         AMediaExtractor_seekTo(
             extractor,
             seek_us,
@@ -99,6 +117,7 @@ pub fn fast_trim_video(
         };
 
         let mut copied_packets = 0;
+        let mut eos_count = 0;
         loop {
             let track_idx = AMediaExtractor_getSampleTrackIndex(extractor);
             if track_idx < 0 {
@@ -106,8 +125,17 @@ pub fn fast_trim_video(
             }
 
             let sample_time_us = AMediaExtractor_getSampleTime(extractor);
+            let mux_track_id = track_map.get(track_idx as usize).copied().unwrap_or(-1);
+
             if sample_time_us > end_us {
-                break; // Reached end of cut window
+                eos_count += 1;
+                if eos_count > 100 {
+                    break;
+                }
+                if !AMediaExtractor_advance(extractor) {
+                    break;
+                }
+                continue;
             }
 
             let sample_size = AMediaExtractor_readSampleData(
@@ -120,12 +148,10 @@ pub fn fast_trim_video(
                 break;
             }
 
-            let mux_track_id = track_map[track_idx as usize];
             if mux_track_id >= 0 && sample_time_us >= seek_us {
                 info_struct.offset = 0;
                 info_struct.size = sample_size as i32;
-                // Offset presentation timestamp relative to trim start
-                info_struct.presentationTimeUs = sample_time_us - seek_us;
+                info_struct.presentationTimeUs = sample_time_us.saturating_sub(seek_us);
                 info_struct.flags = AMediaExtractor_getSampleFlags(extractor);
 
                 AMediaMuxer_writeSampleData(
@@ -137,7 +163,9 @@ pub fn fast_trim_video(
                 copied_packets += 1;
             }
 
-            AMediaExtractor_advance(extractor);
+            if !AMediaExtractor_advance(extractor) {
+                break;
+            }
         }
 
         info!("SmartRender: successfully copied {} packets directly.", copied_packets);

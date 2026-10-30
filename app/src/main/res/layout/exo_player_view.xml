@@ -7,3 +7,4 @@
     app:surface_type="texture_view"
     app:use_controller="false"
     app:resize_mode="fit" />
+

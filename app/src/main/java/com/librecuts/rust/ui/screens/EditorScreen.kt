@@ -1079,12 +1079,12 @@ fun EditorScreen(
                             }) {
                                 Icon(Icons.Default.CallSplit, contentDescription = null, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(3.dp))
-                                Text("Split", fontSize = 11.sp)
+                                Text(strings.split, fontSize = 11.sp)
                             }
                             TextButton(onClick = { showEffectsSheet = true }) {
                                 Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(3.dp))
-                                Text("Speed", fontSize = 11.sp)
+                                Text(strings.speed, fontSize = 11.sp)
                             }
                             TextButton(onClick = {
                                 val offsetMs = (currentPositionMs - targetForPill.timeline_start_ms).coerceIn(0L, targetForPill.durationMs)
@@ -1102,7 +1102,7 @@ fun EditorScreen(
                             }) {
                                 Icon(Icons.Default.Diamond, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(3.dp))
-                                Text("Keyframe", fontSize = 11.sp)
+                                Text(strings.keyframe, fontSize = 11.sp)
                             }
                         }
                     }
@@ -1700,13 +1700,13 @@ fun EditorScreen(
     if (showTextEditorDialog && editingTextClipId != null) {
         AlertDialog(
             onDismissRequest = { showTextEditorDialog = false },
-            title = { Text("Edit Subtitle / Text", fontWeight = FontWeight.Bold) },
+            title = { Text(strings.editSubtitleTitle, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = textToEdit,
                         onValueChange = { textToEdit = it },
-                        label = { Text("Subtitle Text") },
+                        label = { Text(strings.subtitleTextLabel) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 4
                     )
@@ -1720,7 +1720,7 @@ fun EditorScreen(
                     ) {
                         Icon(Icons.Default.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Generate TTS Voiceover for this text", fontSize = 12.sp)
+                        Text(strings.generateTtsForText, fontSize = 12.sp)
                     }
                 }
             },
@@ -1742,12 +1742,12 @@ fun EditorScreen(
                     showTextEditorDialog = false
                     Toast.makeText(context, "Subtitle updated!", Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("Save")
+                    Text(strings.save)
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showTextEditorDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
@@ -1757,11 +1757,11 @@ fun EditorScreen(
     if (showCustomScriptDialog) {
         AlertDialog(
             onDismissRequest = { showCustomScriptDialog = false },
-            title = { Text("Paste Script or Lyrics", fontWeight = FontWeight.Bold) },
+            title = { Text(strings.pasteScriptTitle, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Text(
-                        "Each line will become a synced subtitle overlay along the timeline:",
+                        strings.typePasteScriptDesc,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -1769,7 +1769,7 @@ fun EditorScreen(
                     OutlinedTextField(
                         value = customScriptText,
                         onValueChange = { customScriptText = it },
-                        placeholder = { Text("Line 1: Hello world\nLine 2: Welcome to LibreCut RS\nLine 3: Fast offline video editing") },
+                        placeholder = { Text(strings.pasteScriptPlaceholder) },
                         modifier = Modifier.fillMaxWidth().height(160.dp),
                         maxLines = 8
                     )
@@ -1811,12 +1811,12 @@ fun EditorScreen(
                         Toast.makeText(context, "Added ${newClips.size} subtitle lines!", Toast.LENGTH_SHORT).show()
                     }
                 }) {
-                    Text("Generate Subtitles")
+                    Text(strings.generateSubtitlesBtn)
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showCustomScriptDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
@@ -1909,7 +1909,7 @@ private fun JumpToTimestampDialog(
                     onDismiss()
                 }
             ) {
-                Text("Jump")
+                Text(strings.jumpBtn)
             }
         },
         dismissButton = {
@@ -1961,13 +1961,13 @@ private fun TtsVoiceoverDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Text to Speech Voiceover", fontWeight = FontWeight.Bold)
+                Text(strings.ttsDialogTitle, fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Android Native TTS (0 Byte added, 100% offline):",
+                    text = strings.ttsVoiceoverDesc,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -1975,7 +1975,7 @@ private fun TtsVoiceoverDialog(
                 OutlinedTextField(
                     value = textInput,
                     onValueChange = { textInput = it },
-                    placeholder = { Text("Enter text to speak...") },
+                    placeholder = { Text(strings.enterTextToSpeak) },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     maxLines = 4
                 )
@@ -1987,7 +1987,7 @@ private fun TtsVoiceoverDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Pitch: ${((pitch * 10).toInt() / 10f)}x", fontSize = 11.sp)
+                    Text("${strings.voicePitch}: ${((pitch * 10).toInt() / 10f)}x", fontSize = 11.sp)
                     Slider(
                         value = pitch,
                         onValueChange = { pitch = it },
@@ -2002,7 +2002,7 @@ private fun TtsVoiceoverDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Speed: ${((speed * 10).toInt() / 10f)}x", fontSize = 11.sp)
+                    Text("${strings.voiceSpeed}: ${((speed * 10).toInt() / 10f)}x", fontSize = 11.sp)
                     Slider(
                         value = speed,
                         onValueChange = { speed = it },
@@ -2025,7 +2025,7 @@ private fun TtsVoiceoverDialog(
                 ) {
                     Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Audition Voice", fontSize = 12.sp)
+                    Text(strings.auditionVoice, fontSize = 12.sp)
                 }
             }
         },
@@ -2058,7 +2058,7 @@ private fun TtsVoiceoverDialog(
                     }
                 }
             ) {
-                Text(if (isGenerating) "Synthesizing..." else "Add to Timeline")
+                Text(if (isGenerating) strings.synthesizingAudio else strings.addToTimeline)
             }
         },
         dismissButton = {
@@ -2066,7 +2066,7 @@ private fun TtsVoiceoverDialog(
                 ttsHelper.stop()
                 onDismiss()
             }) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         }
     )
@@ -2157,14 +2157,14 @@ private fun AudioImportSheet(
                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Import Audio Song / Voice (.mp3, .wav, .m4a)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("Select any audio file from device storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Text(strings.importAudioSong, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text(strings.importAudioSongDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Built-in Sound Effects (16-bit 44.1kHz PCM)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(strings.builtinSfxTitle, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(8.dp))
 
         sfxList.forEach { item ->
@@ -2209,7 +2209,7 @@ private fun AudioImportSheet(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = "Audition Sound",
+                            contentDescription = strings.auditionSound,
                             tint = if (isPlaying) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                         )
                     }
@@ -2229,7 +2229,7 @@ private fun AudioImportSheet(
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Add", fontSize = 11.sp)
+                        Text(strings.addBtn, fontSize = 11.sp)
                     }
                 }
             }
@@ -2246,6 +2246,7 @@ private fun SubtitleImportSheet(
     onAddBlankText: () -> Unit
 ) {
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
 
     Column(
         modifier = Modifier
@@ -2253,13 +2254,13 @@ private fun SubtitleImportSheet(
             .padding(20.dp)
     ) {
         Text(
-            text = "Subtitles & Auto Captions",
+            text = strings.addSubtitles,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Generate on-device captions, speech synthesis, or import subtitles",
+            text = strings.autoCaptionsDesc,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -2283,15 +2284,15 @@ private fun SubtitleImportSheet(
                 Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Text to Speech (TTS Voiceover)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("0 Byte offline speech synthesis: generate voiceover directly from text", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                    Text(strings.ttsVoiceoverTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.ttsVoiceoverDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Option 1: Auto Captions (CapCut Style)
+        // Option 1: Auto Captions
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
@@ -2309,8 +2310,8 @@ private fun SubtitleImportSheet(
                 Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Auto Captions (Speech to Subtitles)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Detect speech intervals & automatically generate synced text overlays", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.autoCaptionsTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.autoCaptionsDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2335,8 +2336,8 @@ private fun SubtitleImportSheet(
                 Icon(Icons.Default.TextFields, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Type / Paste Script or Lyrics", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Paste sentences or lyrics to auto-generate timed subtitle overlays", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.typePasteScriptTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.typePasteScriptDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2361,8 +2362,8 @@ private fun SubtitleImportSheet(
                 Icon(Icons.Default.Subtitles, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Import .SRT Subtitle File", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Parse external timestamped subtitles from storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.importSrtTitle, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.importSrtDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2387,8 +2388,8 @@ private fun SubtitleImportSheet(
                 Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Add Blank Title / Text Clip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Insert a customizable text overlay at current playhead", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.addBlankTextTitle, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.addBlankTextDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2401,19 +2402,20 @@ private fun MediaImportSheet(
     onImportImages: () -> Unit
 ) {
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(20.dp)
     ) {
         Text(
-            text = "Import Media",
+            text = strings.importMedia,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Add video clips or images directly to timeline tracks",
+            text = strings.importVideosDesc,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -2436,8 +2438,8 @@ private fun MediaImportSheet(
                 Icon(Icons.Default.VideoCall, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Import Videos / Clips", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Select one or multiple video files from device storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.importVideosTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.importVideosDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2461,8 +2463,8 @@ private fun MediaImportSheet(
                 Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Import Photos & Images (with Auto Cutout)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Add still photos/graphics to timeline and remove background in Effects", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    Text(strings.importPhotosTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(strings.importPhotosDesc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }
@@ -2476,6 +2478,7 @@ private fun DirectTransitionsSheet(
     onSelectTransition: (TransitionType, Long) -> Unit
 ) {
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     var currentDuration by remember { mutableFloatStateOf(transitionDurationMs.toFloat()) }
 
     Column(
@@ -2484,13 +2487,13 @@ private fun DirectTransitionsSheet(
             .padding(20.dp)
     ) {
         Text(
-            text = "Clip Transitions",
+            text = strings.transitions,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Choose entrance and blend transitions between clips",
+            text = strings.transitionDesc,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -2501,7 +2504,7 @@ private fun DirectTransitionsSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Transition Duration: ${(currentDuration / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", fontSize = 12.sp)
+            Text("${strings.transitionDurationLabel}: ${(currentDuration / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", fontSize = 12.sp)
         }
         Slider(
             value = currentDuration,

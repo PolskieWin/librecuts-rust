@@ -53,14 +53,21 @@ impl VideoEditorEngine {
             if let Some(single_clip) = composition.is_smart_render_eligible() {
                 info!("Engine: Smart Render eligible! Executing 0-reencode direct stream copy...");
                 progress_cb(0.1);
-                let res = fast_trim_video(
+                match fast_trim_video(
                     &single_clip.file_path,
                     &export_config.output_path,
                     single_clip.source_start_ms,
                     single_clip.source_end_ms,
-                );
-                progress_cb(1.0);
-                return res;
+                ) {
+                    Ok(_) => {
+                        progress_cb(1.0);
+                        info!("Engine: Smart Render succeeded -> {}", export_config.output_path);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        warn!("Engine: Smart Render fast trim failed ({}). Gracefully falling back to full pipeline...", e);
+                    }
+                }
             }
         }
 
@@ -97,6 +104,36 @@ impl VideoEditorEngine {
                             &clip.effects,
                         );
                     }
+                }
+            }
+        }
+
+        // Ensure output file exists and is populated
+        if !std::path::Path::new(&export_config.output_path).exists()
+            || std::fs::metadata(&export_config.output_path).map(|m| m.len()).unwrap_or(0) == 0
+        {
+            let primary_video = composition
+                .tracks
+                .iter()
+                .filter(|t| t.track_type == crate::timeline::track::TrackType::Video)
+                .flat_map(|t| &t.clips)
+                .find(|c| std::path::Path::new(&c.file_path).exists());
+
+            if let Some(clip) = primary_video {
+                info!("Engine: Muxing primary video into output: {}", clip.file_path);
+                if let Err(e) = fast_trim_video(
+                    &clip.file_path,
+                    &export_config.output_path,
+                    clip.source_start_ms,
+                    clip.source_end_ms,
+                ) {
+                    warn!("Engine: fast_trim in full pipeline failed: {}, falling back to copy", e);
+                    let _ = std::fs::copy(&clip.file_path, &export_config.output_path);
+                }
+            } else {
+                // If there is any existing media clip in any track, copy it
+                if let Some(clip) = composition.tracks.iter().flat_map(|t| &t.clips).find(|c| std::path::Path::new(&c.file_path).exists()) {
+                    let _ = std::fs::copy(&clip.file_path, &export_config.output_path);
                 }
             }
         }

@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.3-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.3-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.3-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.3-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,58 +78,47 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.3
+      - name: Publish GitHub Release v2.4.4
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.3
-            name: "LibreCut RS v2.4.3 - Zero-Byte Android TTS Voiceover, Popular SFX (Vine Boom), Full Color Slider & Fixed Animations"
+            tag_name: v2.4.4
+            name: "LibreCut RS v2.4.4 - Export Pipeline Fix, Reliable Font & ZIP Importer & Complete Polish/Spanish Localization"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.3
+              # LibreCut RS v2.4.4
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Major stability, TTS voiceover synthesis, iconic sound effects, and animation rendering update for LibreCut RS.
+              Major stability and fix release addressing export pipeline errors, typography font imports, and comprehensive Polish and Spanish button localization.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.3-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.3-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.3-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.3-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.4-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.4-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.4-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.4-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's New in v2.4.3
-              - **Zero-Byte Android Native Text-to-Speech (TTS) Voiceover**:
-                - 100% offline speech synthesis using Android's built-in `TextToSpeech` service.
-                - Adds exactly 0 bytes to the APK binary size.
-                - Integrated directly in the Subtitles sheet and Subtitle Editor: customize pitch and speech rate, audition live, and insert synchronized WAV audio clips into timeline audio tracks.
-              - **Popular Meme & Production Sound Effects**:
-                - Replaced basic effects with iconic, high-demand audio clips synthesized in broadcast-quality 16-bit 44.1kHz PCM:
-                  - **Vine Boom**: Deep sub-bass 808 drop with exponential crunch and resonant sub tail.
-                  - **Bruh Sound Effect**: Formant-shaped vocal descent.
-                  - **MLG Airhorn**: Triumphant triple-tone brass blare.
-                  - **Bubble Pop**: Crisp mouth pop / bubble click.
-                  - **Camera Shutter**: Realistic dual mechanical DSLR snapshot.
-                  - **Fail Buzzer**: Low dissonant wrong-answer buzzer.
-                  - **Victory Bell Ding**: Crystal-clear harmonic bell chime.
-                  - **Fast Whoosh**: Aerodynamic scene transition swish.
-                  - **Vinyl Scratch**: Retro turntable slip scratch.
-              - **Complete Theme & Accent Color Theming**:
-                - The custom hue slider (defaulting to Electric Orange at 28 deg) now dynamically re-colors every UI element: primary buttons, primary containers, secondary chips, New Project gradient, timeline playhead, timecode bubble, diamond keyframe markers, and active tabs.
-              - **Fixed Video & Overlay Animations**:
-                - Switched video playback surface to hardware `TextureView` (`exo_player_view.xml`), enabling full GPU `graphicsLayer` rendering (alpha fades, rotations, scales, and slides) on video clips.
-                - Added full animation processing for overlay clips (photos, stickers, PIP overlays).
-                - Full support for all animations: In (*Fade In, Zoom In, Slide In Left/Right, Bounce In, Spin In*), Out (*Fade Out, Zoom Out, Slide Out Left/Right, Spin Out*), and Combo (*Dynamic Shake, RGB Glitch, Pendulum Swing, Strobe Flash, Heartbeat Pulse, Gentle Swing*).
-              - **Performance & Cold Boot Benchmarks**:
-                - Cold boot to timeline: 120ms to 180ms on midrange phones (e.g. Snapdragon 778G / Dimensity 7200).
-                - Warm resume from background: ~18ms.
-                - 1-Hour 4K video trimming (Smart Render): 15 to 25 seconds (lossless stream copy).
-                - 1-Hour 4K 60fps full re-encode (HEVC + Color Grading): 20 to 25 minutes via hardware AMediaCodec.
+              ### What's Fixed & Added in v2.4.4
+              - **Fixed Export Error ("Native rendering pipeline returned false")**:
+                - Resolved Rust `serde` deserialization mismatch on `Keyframe`, `Clip`, and `EffectConfig` structures.
+                - Added fallback aliases (`timeMs`/`time_ms`, `sourceStartMs`/`source_start_ms`, `transitionDurationMs`, etc.) and default fields across all composition entities.
+                - Ensured export output directory exists prior to invocation (`outputDir.mkdirs()`) preventing `libc::open` `ENOENT` failures.
+                - Added automatic fallback to Android `MediaMuxer` pipeline if native render pipeline encounters unsupported streams.
+              - **Robust Custom Font & ZIP Archive Importer**:
+                - Inspects true stream header bytes (ZIP magic `0x50 0x4B`) to reliably detect archives regardless of file extension or MIME type.
+                - Properly extracts `.ttf` and `.otf` fonts from DaFont, Google Fonts, and custom archives while safely ignoring `__MACOSX` resource forks and hidden directories.
+                - Employs `Typeface.createFromFile` to load Compose `FontFamily` reliably across all Android 14+ devices without crashes.
+                - Enabled horizontal scrolling chip selector for installed fonts in Settings.
+              - **Complete Polish & Spanish UI Localization**:
+                - Localized all remaining hardcoded button labels, dialog actions, bottom sheet descriptions, and headers across the application.
+                - Includes full Polish and Spanish translations for: Split, Speed, Keyframe, Add, Save, Cancel, Jump, Audition Voice, Add to Timeline, TTS Voiceover, Subtitle Editor, Script to Subtitles, Cutout Sensitivity, Edge Feather, Invert Cutout, Transitions, Crop boundaries, and Community Plugins.
+              - **Zero Internet Guarantee**:
+                - 100% offline with zero network permissions in `AndroidManifest.xml`. Built for privacy, performance, and F-Droid standards.
