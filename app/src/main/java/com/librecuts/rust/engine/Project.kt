@@ -91,6 +91,15 @@ class ProjectRepository(private val context: Context) {
         copy
     }
 
+    suspend fun renameProject(id: String, newTitle: String) = withContext(Dispatchers.IO) {
+        val original = getProject(id) ?: return@withContext
+        val updated = original.copy(
+            title = newTitle,
+            lastModifiedAt = System.currentTimeMillis()
+        )
+        saveProject(updated)
+    }
+
     suspend fun deleteProject(id: String) = withContext(Dispatchers.IO) {
         val file = File(projectsDir, "$id.json")
         if (file.exists()) {
