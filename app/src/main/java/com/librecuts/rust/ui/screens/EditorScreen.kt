@@ -6,7 +6,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -250,7 +249,7 @@ fun EditorScreen(
                             maxLines = 1
                         )
                         Text(
-                            text = "${project.aspectRatio.label} • Rust Vulkan Hardware Accel",
+                            text = "${project.aspectRatio} • Rust Vulkan Hardware Accel",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -452,14 +451,14 @@ fun EditorScreen(
                 )
 
                 // Voiceover Recording Status Banner
-                AnimatedVisibility(
-                    visible = isRecordingVoiceover,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
-                ) {
+                if (isRecordingVoiceover) {
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = Color.Red.copy(alpha = 0.85f),
-                        shadowElevation = 6.dp
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 16.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
