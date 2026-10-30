@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build Native Engine & APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -49,8 +51,66 @@ jobs:
       - name: Build Android APK with Gradle
         run: gradle assembleRelease --stacktrace
 
-      - name: Upload Release APK
+      - name: Prepare APK Variants
+        run: |
+          mkdir -p release-apks
+          cd app/build/outputs/apk/release/
+          ls -la
+          for f in *.apk; do
+            if [[ "$f" == *"universal"* ]]; then
+              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-universal.apk
+            elif [[ "$f" == *"arm64-v8a"* ]]; then
+              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-arm64-v8a.apk
+            elif [[ "$f" == *"armeabi-v7a"* ]]; then
+              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-armeabi-v7a.apk
+            elif [[ "$f" == *"x86_64"* ]]; then
+              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-x86_64.apk
+            else
+              cp "$f" ../../../../release-apks/"$f"
+            fi
+          done
+          cd ../../../../release-apks
+          ls -lh
+
+      - name: Upload Release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: librecuts-rust-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: librecuts-rust-release-apks
+          path: release-apks/*.apk
+
+      - name: Publish GitHub Release v2.4.0
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.4.0
+          name: "LibreCut RS v2.4.0 - Universal & Architecture-Specific Builds (arm64-v8a / armeabi-v7a)"
+          draft: false
+          prerelease: false
+          files: release-apks/*.apk
+          body: |
+            # LibreCut RS v2.4.0
+
+            > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
+            > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Electric Blue*
+
+            A major overhaul of LibreCut RS featuring real-time clip adjustments, image import with instant background removal / auto cutout, sapphire blue diamond keyframes, project thumbnails with high-performance LRU memory/disk caching, project editing time tracker, categorized editing dock, and architecture-optimized APKs.
+
+            ---
+
+            ### 📦 Download Variants
+            - **Universal APK (`LibreCut-RS-v2.4.0-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (higher MB).
+            - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.0-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (lower MB, ~4 MB).
+            - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.0-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (lower MB, ~3.8 MB).
+            - **x86_64 APK (`LibreCut-RS-v2.4.0-x86_64.apk`)**: For Android emulators and Chromebooks (lower MB, ~4.1 MB).
+
+            ---
+
+            ### ✨ Key Features in v2.4.0
+            - **Clip Adjustments & Visual FX Fix**: Live color grading (brightness, contrast, saturation), filters (noir, cinematic, cyberpunk, vintage, invert), and transforms now render in real time on the preview screen and persist across sessions.
+            - **Image Import & Auto Cutout**: Import photos directly onto timeline tracks with 100% offline background removal (no green screen required).
+            - **Sapphire Blue Diamond Keyframe System**: Replaced yellow diamond icon with modern sapphire cyan (`#00E5FF`).
+            - **Project Thumbnails & High-Performance Caching**: Real video frame and image thumbnails cached in a 32MB LRU memory + disk cache. Empty projects render an electric blue gradient with aspect ratio (never blank).
+            - **Project Editing Time Tracker**: Track and view exact time spent editing each project (disabled by default, toggled in Settings).
+            - **Categorized Bottom Dock**: Categorized into Media, Audio & SFX, Subtitles, Transitions, Animations, Adjust & FX, Plugins, Compress, and Export.
+            - **Global Custom Font Manager**: Import `.ttf` / `.otf` fonts in Settings for text overlays and subtitles without font stretch bugs.
+            - **Clean Light Blue Logo**: Minimalist geometric light blue (`#38BDF8`) app launcher icon and SVG logo.
