@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,16 +20,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Animation
@@ -53,6 +55,7 @@ import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -62,6 +65,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -82,13 +87,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,6 +99,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.librecuts.rust.engine.AnimationType
 import com.librecuts.rust.engine.AudioRecorderHelper
 import com.librecuts.rust.engine.AutoCaptionHelper
@@ -107,6 +113,7 @@ import com.librecuts.rust.engine.FileUtils
 import com.librecuts.rust.engine.FontManager
 import com.librecuts.rust.engine.Keyframe
 import com.librecuts.rust.engine.Project
+import com.librecuts.rust.engine.SoundEffectsManager
 import com.librecuts.rust.engine.SpeedCurveType
 import com.librecuts.rust.engine.SrtParser
 import com.librecuts.rust.engine.Track
@@ -170,6 +177,12 @@ fun EditorScreen(
 
     var isRecordingVoiceover by remember { mutableStateOf(false) }
     var recordElapsedSeconds by remember { mutableLongStateOf(0L) }
+
+    var showTextEditorDialog by remember { mutableStateOf(false) }
+    var textToEdit by remember { mutableStateOf("") }
+    var editingTextClipId by remember { mutableStateOf<String?>(null) }
+    var showCustomScriptDialog by remember { mutableStateOf(false) }
+    var customScriptText by remember { mutableStateOf("") }
 
     // Multi-track composition state loaded directly from the project
     var composition by remember(project.id) {
@@ -598,12 +611,16 @@ fun EditorScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Live Preview Player Box with Text Overlay (Upper half)
-            val currentVideoUri = composition.tracks
-                .find { it.track_type == TrackType.Video }
-                ?.clips
-                ?.firstOrNull()
-                ?.file_path
+            // Dynamic clip under playhead resolution so adjustments and cuts always work
+            val clipAtPlayhead = selectedClip ?: composition.tracks
+                .flatMap { it.clips }
+                .find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+                ?: composition.tracks
+                    .find { it.track_type == TrackType.Video }
+                    ?.clips
+                    ?.firstOrNull()
+
+            val currentMediaUri = clipAtPlayhead?.file_path
 
             Box(
                 modifier = Modifier
@@ -611,8 +628,8 @@ fun EditorScreen(
                     .weight(1.0f)
             ) {
                 VideoPreviewPlayer(
-                    videoUri = currentVideoUri,
-                    activeClip = selectedClip,
+                    videoUri = currentMediaUri,
+                    activeClip = clipAtPlayhead,
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
                     onPositionChanged = { currentPositionMs = it },
@@ -651,32 +668,52 @@ fun EditorScreen(
                     }
                 }
 
-                // Render Active Text Overlays with Custom Font Support and NO Stretch Bug
-                val activeTextOverlay = composition.tracks
+                // Render Active Text Overlays with Movable & Resizable Gestures and Click-to-Edit
+                val activeTextClip = composition.tracks
                     .flatMap { it.clips }
-                    .filter { currentPositionMs in it.timeline_start_ms..(it.timeline_start_ms + it.durationMs) }
-                    .flatMap { it.effects }
-                    .filterIsInstance<EffectConfig.TextOverlay>()
-                    .firstOrNull()
+                    .firstOrNull { clip ->
+                        currentPositionMs in clip.timeline_start_ms..(clip.timeline_start_ms + clip.durationMs) &&
+                                clip.effects.any { it is EffectConfig.TextOverlay }
+                    }
+
+                val activeTextOverlay = activeTextClip?.effects
+                    ?.filterIsInstance<EffectConfig.TextOverlay>()
+                    ?.firstOrNull()
 
                 activeTextOverlay?.let { textEff ->
                     val customFontFamily = remember(textEff.custom_font_path) {
                         fontManager.getFontFamily(textEff.custom_font_path)
                     }
 
+                    var textOffsetX by remember(activeTextClip.id) { mutableFloatStateOf(0f) }
+                    var textOffsetY by remember(activeTextClip.id) { mutableFloatStateOf(0f) }
+                    var textScale by remember(activeTextClip.id) { mutableFloatStateOf(1f) }
+
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 24.dp, vertical = 20.dp)
+                            .align(Alignment.Center)
+                            .offset { androidx.compose.ui.unit.IntOffset(textOffsetX.toInt(), textOffsetY.toInt()) }
+                            .pointerInput(activeTextClip.id) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    textOffsetX += pan.x
+                                    textOffsetY += pan.y
+                                    textScale = (textScale * zoom).coerceIn(0.5f, 3.5f)
+                                }
+                            }
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Black.copy(alpha = 0.72f))
+                            .clickable {
+                                textToEdit = textEff.text
+                                editingTextClipId = activeTextClip.id
+                                showTextEditorDialog = true
+                            }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = textEff.text,
                             fontFamily = customFontFamily,
-                            fontSize = textEff.font_size.sp,
-                            color = Color.White,
+                            fontSize = (textEff.font_size * textScale).sp,
+                            color = Color(textEff.color_rgba),
                             textAlign = TextAlign.Center,
                             maxLines = 4,
                             overflow = TextOverflow.Ellipsis
@@ -972,6 +1009,10 @@ fun EditorScreen(
                     showSubtitleSheet = false
                     srtPickerLauncher.launch("*/*")
                 },
+                onCustomScript = {
+                    showSubtitleSheet = false
+                    showCustomScriptDialog = true
+                },
                 onAddBlankText = {
                     showSubtitleSheet = false
                     val textClip = Clip(
@@ -1014,13 +1055,13 @@ fun EditorScreen(
                     haptics.tick()
                     audioPickerLauncher.launch("audio/*")
                 },
-                onSelectPreset = { name, durationSec ->
+                onSelectEffect = { item ->
                     haptics.snap()
                     val audioClip = Clip(
                         id = UUID.randomUUID().toString(),
-                        file_path = "sfx://${name.lowercase().replace(" ", "_")}",
+                        file_path = item.localFilePath,
                         source_start_ms = 0L,
-                        source_end_ms = (durationSec * 1000).toLong(),
+                        source_end_ms = (item.durationSec * 1000).toLong(),
                         timeline_start_ms = currentPositionMs
                     )
                     val updatedTracks = composition.tracks.map { track ->
@@ -1028,7 +1069,7 @@ fun EditorScreen(
                     }
                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                     showAudioSheet = false
-                    Toast.makeText(context, "$name added!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "${item.name} added!", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -1160,6 +1201,120 @@ fun EditorScreen(
             )
         }
     }
+
+    // Direct Subtitle / Text Editor Dialog
+    if (showTextEditorDialog && editingTextClipId != null) {
+        AlertDialog(
+            onDismissRequest = { showTextEditorDialog = false },
+            title = { Text("Edit Subtitle / Text", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = textToEdit,
+                        onValueChange = { textToEdit = it },
+                        label = { Text("Subtitle Text") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 4
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val updatedTracks = composition.tracks.map { track ->
+                        track.copy(clips = track.clips.map { clip ->
+                            if (clip.id == editingTextClipId) {
+                                val updatedEffects = clip.effects.map { eff ->
+                                    if (eff is EffectConfig.TextOverlay) {
+                                        eff.copy(text = textToEdit)
+                                    } else eff
+                                }
+                                clip.copy(effects = updatedEffects)
+                            } else clip
+                        })
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    showTextEditorDialog = false
+                    Toast.makeText(context, "Subtitle updated!", Toast.LENGTH_SHORT).show()
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showTextEditorDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Custom Script / Lyrics to Subtitles Dialog
+    if (showCustomScriptDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomScriptDialog = false },
+            title = { Text("Paste Script or Lyrics", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        "Each line will become a synced subtitle overlay along the timeline:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customScriptText,
+                        onValueChange = { customScriptText = it },
+                        placeholder = { Text("Line 1: Hello world\nLine 2: Welcome to LibreCut RS\nLine 3: Fast offline video editing") },
+                        modifier = Modifier.fillMaxWidth().height(160.dp),
+                        maxLines = 8
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val lines = customScriptText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+                    if (lines.isNotEmpty()) {
+                        var offset = currentPositionMs
+                        val durationPerLine = 2500L
+                        val newClips = lines.map { line ->
+                            val c = Clip(
+                                id = UUID.randomUUID().toString(),
+                                file_path = "text://${UUID.randomUUID()}",
+                                source_start_ms = 0L,
+                                source_end_ms = durationPerLine,
+                                timeline_start_ms = offset,
+                                effects = listOf(
+                                    EffectConfig.TextOverlay(
+                                        text = line,
+                                        font_size = 22f,
+                                        x = 0.5f,
+                                        y = 0.82f,
+                                        color_rgba = 0xFFFFFFFFL
+                                    )
+                                )
+                            )
+                            offset += durationPerLine
+                            c
+                        }
+                        val updatedTracks = composition.tracks.map { track ->
+                            if (track.track_type == TrackType.Text) {
+                                track.copy(clips = track.clips + newClips)
+                            } else track
+                        }
+                        updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                        showCustomScriptDialog = false
+                        Toast.makeText(context, "Added ${newClips.size} subtitle lines!", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("Generate Subtitles")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCustomScriptDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -1195,9 +1350,16 @@ private fun BottomToolbarItem(
 @Composable
 private fun AudioImportSheet(
     onImportLocalFile: () -> Unit,
-    onSelectPreset: (name: String, durationSec: Double) -> Unit
+    onSelectEffect: (SoundEffectsManager.SoundEffectItem) -> Unit
 ) {
+    val context = LocalContext.current
     val haptics = rememberHapticHelper()
+    val sfxManager = remember { SoundEffectsManager(context) }
+    var sfxList by remember { mutableStateOf<List<SoundEffectsManager.SoundEffectItem>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        sfxList = sfxManager.getAvailableSoundEffects()
+    }
 
     Column(
         modifier = Modifier
@@ -1236,22 +1398,17 @@ private fun AudioImportSheet(
         Text("Built-in Sound Effects", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(8.dp))
 
-        val presets = listOf(
-            Triple("Cinematic Boom Impact", 2.5, "Deep low-end impact hit"),
-            Triple("Fast Air Whoosh", 0.8, "Quick transition swish"),
-            Triple("UI Tactile Pop Click", 0.3, "Subtle mechanical click"),
-            Triple("Tension Riser", 3.0, "Ascending pitch suspense builder"),
-            Triple("Vinyl Record Scratch", 1.2, "Retro turntable tape scratch")
-        )
-
-        presets.forEach { (name, duration, desc) ->
+        sfxList.forEach { item ->
             Card(
                 shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 3.dp)
-                    .clickable { onSelectPreset(name, duration) }
+                    .clickable {
+                        haptics.snap()
+                        onSelectEffect(item)
+                    }
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1259,10 +1416,10 @@ private fun AudioImportSheet(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
-                        Text(desc, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(item.name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        Text(item.description, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
-                    Text("${duration}s", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("${item.durationSec}s", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -1272,6 +1429,7 @@ private fun AudioImportSheet(
 @Composable
 private fun SubtitleImportSheet(
     onAutoCaptions: () -> Unit,
+    onCustomScript: () -> Unit,
     onImportSrt: () -> Unit,
     onAddBlankText: () -> Unit
 ) {
@@ -1321,7 +1479,33 @@ private fun SubtitleImportSheet(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Option 2: Import .SRT
+        // Option 2: Custom Script / Lyrics
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.snap()
+                    onCustomScript()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.TextFields, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Type / Paste Script or Lyrics", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Paste sentences or lyrics to auto-generate timed subtitle overlays", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Option 3: Import .SRT
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -1347,7 +1531,7 @@ private fun SubtitleImportSheet(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Option 3: Manual Text
+        // Option 4: Manual Text
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -1362,7 +1546,7 @@ private fun SubtitleImportSheet(
                 modifier = Modifier.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.TextFields, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text("Add Blank Title / Text Clip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)

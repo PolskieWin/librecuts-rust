@@ -13,8 +13,8 @@ android {
         applicationId = "com.librecuts.rust"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20400
-        versionName = "2.4.0-rs"
+        versionCode = 20401
+        versionName = "2.4.1-rs"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {

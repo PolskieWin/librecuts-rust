@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.1-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.1-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.1-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.1-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,39 +78,38 @@ jobs:
           name: librecuts-rust-release-apks
           path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.0
+      - name: Publish GitHub Release v2.4.1
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.4.0
-          name: "LibreCut RS v2.4.0 - Universal & Architecture-Specific Builds (arm64-v8a / armeabi-v7a)"
+          tag_name: v2.4.1
+          name: "LibreCut RS v2.4.1 - Interactive Transforms, Real SFX & Precision Audio Boost"
           draft: false
           prerelease: false
+          make_latest: true
           files: release-apks/*.apk
           body: |
-            # LibreCut RS v2.4.0
+            # LibreCut RS v2.4.1
 
             > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
             > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Electric Blue*
 
-            A major overhaul of LibreCut RS featuring real-time clip adjustments, image import with instant background removal / auto cutout, sapphire blue diamond keyframes, project thumbnails with high-performance LRU memory/disk caching, project editing time tracker, categorized editing dock, and architecture-optimized APKs.
+            A major stability, transform, audio, and subtitle update for LibreCut RS.
 
             ---
 
             ### 📦 Download Variants
-            - **Universal APK (`LibreCut-RS-v2.4.0-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (higher MB).
-            - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.0-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (lower MB, ~4 MB).
-            - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.0-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (lower MB, ~3.8 MB).
-            - **x86_64 APK (`LibreCut-RS-v2.4.0-x86_64.apk`)**: For Android emulators and Chromebooks (lower MB, ~4.1 MB).
+            - **Universal APK (`LibreCut-RS-v2.4.1-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (higher MB).
+            - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.1-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (lower MB, ~3 MB).
+            - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.1-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (lower MB, ~2.8 MB).
+            - **x86_64 APK (`LibreCut-RS-v2.4.1-x86_64.apk`)**: For Android emulators and Chromebooks (lower MB, ~3.1 MB).
 
             ---
 
-            ### ✨ Key Features in v2.4.0
-            - **Clip Adjustments & Visual FX Fix**: Live color grading (brightness, contrast, saturation), filters (noir, cinematic, cyberpunk, vintage, invert), and transforms now render in real time on the preview screen and persist across sessions.
-            - **Image Import & Auto Cutout**: Import photos directly onto timeline tracks with 100% offline background removal (no green screen required).
-            - **Sapphire Blue Diamond Keyframe System**: Replaced yellow diamond icon with modern sapphire cyan (`#00E5FF`).
-            - **Project Thumbnails & High-Performance Caching**: Real video frame and image thumbnails cached in a 32MB LRU memory + disk cache. Empty projects render an electric blue gradient with aspect ratio (never blank).
-            - **Project Editing Time Tracker**: Track and view exact time spent editing each project (disabled by default, toggled in Settings).
-            - **Categorized Bottom Dock**: Categorized into Media, Audio & SFX, Subtitles, Transitions, Animations, Adjust & FX, Plugins, Compress, and Export.
-            - **Global Custom Font Manager**: Import `.ttf` / `.otf` fonts in Settings for text overlays and subtitles without font stretch bugs.
-            - **Clean Light Blue Logo**: Minimalist geometric light blue (`#38BDF8`) app launcher icon and SVG logo.
+            ### ✨ What's New in v2.4.1
+            - **Interactive Resizing & Moving (Pinch & Pan Gestures)**: Pinch-to-zoom to resize and drag to move photos, videos, and text overlays directly on the live preview screen.
+            - **Hardware-Accelerated Audio Boost (up to 200%)**: Integrated Android `LoudnessEnhancer` hardware audio processor so boosting volume above 100% genuinely amplifies audio playback and preview.
+            - **Real Sound Effects Engine**: Built-in 100% offline PCM WAV audio synthesizer generating authentic, broadcast-quality audio files (*Cinematic Boom*, *Fast Air Whoosh*, *UI Pop Click*, *Tension Riser*, *Vinyl Scratch*) that play natively in ExoPlayer and render in exported videos.
+            - **Custom Script & Lyrics Subtitle Tool**: Paste scripts, song lyrics, or dialogue to instantly generate timed subtitle clips along the timeline. Tap any subtitle on screen to edit its text, font size, and color!
+            - **Active Clip Resolution Fix**: Live preview player dynamically follows the playhead across cuts and multiple clips, guaranteeing color grading, filters, and volume apply instantly.
+            - **Background Progress Preservation**: Seamlessly restores your active project and playhead position even if Android suspends or kills the app in the background.

@@ -2,12 +2,14 @@ package com.librecuts.rust.ui.components
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
@@ -17,17 +19,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -90,6 +96,39 @@ fun VideoPreviewPlayer(
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_OFF
+        }
+    }
+
+    val loudnessEnhancer = remember(exoPlayer) {
+        try {
+            LoudnessEnhancer(exoPlayer.audioSessionId).apply { enabled = true }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    DisposableEffect(loudnessEnhancer) {
+        onDispose {
+            try {
+                loudnessEnhancer?.release()
+            } catch (e: Exception) {}
+        }
+    }
+
+    // Dynamic Volume & Audio Boost Control (0% to 200%)
+    LaunchedEffect(activeClip?.volume, activeClip?.muted, exoPlayer) {
+        val vol = if (activeClip?.muted == true) 0f else (activeClip?.volume ?: 1.0f)
+        exoPlayer.volume = vol.coerceIn(0f, 1.0f)
+        if (vol > 1.0f) {
+            val gainMb = ((vol - 1.0f) * 1000).toInt().coerceIn(0, 1500)
+            try {
+                loudnessEnhancer?.setTargetGain(gainMb)
+                loudnessEnhancer?.enabled = true
+            } catch (e: Exception) {}
+        } else {
+            try {
+                loudnessEnhancer?.setTargetGain(0)
+            } catch (e: Exception) {}
         }
     }
 
@@ -247,15 +286,29 @@ fun VideoPreviewPlayer(
         label = "animScale"
     )
 
+    // Interactive pan (moving) and pinch-to-zoom (resizing) for photos and video
+    var panX by remember(activeClip?.id) { mutableFloatStateOf(0f) }
+    var panY by remember(activeClip?.id) { mutableFloatStateOf(0f) }
+    var zoomScale by remember(activeClip?.id) { mutableFloatStateOf(1f) }
+    var rotationAngle by remember(activeClip?.id) { mutableFloatStateOf(0f) }
+
     Box(
         modifier = modifier
             .background(Color.Black)
-            .graphicsLayer {
-                this.scaleX = scaleX * animScale
-                this.scaleY = scaleY * animScale
-                if (activeClip?.animation == AnimationType.SpinIn) {
-                    this.rotationZ = 360f * animScale
+            .pointerInput(activeClip?.id) {
+                detectTransformGestures { _, pan, zoom, rotation ->
+                    panX += pan.x
+                    panY += pan.y
+                    zoomScale = (zoomScale * zoom).coerceIn(0.2f, 5.0f)
+                    rotationAngle += rotation
                 }
+            }
+            .graphicsLayer {
+                this.translationX = panX
+                this.translationY = panY
+                this.scaleX = scaleX * animScale * zoomScale
+                this.scaleY = scaleY * animScale * zoomScale
+                this.rotationZ = rotationAngle + (if (activeClip?.animation == AnimationType.SpinIn) 360f * animScale else 0f)
             }
             .then(if (clipShape != null) Modifier.clip(clipShape) else Modifier),
         contentAlignment = Alignment.Center
@@ -269,6 +322,9 @@ fun VideoPreviewPlayer(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
+            val grading = activeClip?.effects?.filterIsInstance<EffectConfig.ColorGrading>()?.firstOrNull()
+            val filter = activeClip?.effects?.filterIsInstance<EffectConfig.Filter>()?.firstOrNull()
+
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
@@ -280,11 +336,33 @@ fun VideoPreviewPlayer(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Color grading & filter adjustment overlay layer for live video preview
+            // Color grading & creative filter visual adjustment overlay layer
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Transparent)
+                    .drawWithContent {
+                        drawContent()
+                        // Creative Color Filter Blend Overlay
+                        filter?.let { f ->
+                            when (f.filter_type.lowercase()) {
+                                "sepia" -> drawRect(Color(0xFF704214), blendMode = BlendMode.Color, alpha = 0.55f * f.intensity)
+                                "cinematic" -> drawRect(Color(0xFF005B94), blendMode = BlendMode.Overlay, alpha = 0.45f * f.intensity)
+                                "cyberpunk" -> drawRect(Color(0xFFFF007F), blendMode = BlendMode.Screen, alpha = 0.35f * f.intensity)
+                                "vintage" -> drawRect(Color(0xFFD4A373), blendMode = BlendMode.Multiply, alpha = 0.40f * f.intensity)
+                                "noir", "grayscale" -> drawRect(Color.Black, blendMode = BlendMode.Saturation, alpha = 1.0f * f.intensity)
+                                "invert" -> drawRect(Color.White, blendMode = BlendMode.Difference, alpha = 1.0f * f.intensity)
+                                else -> {}
+                            }
+                        }
+                        // Brightness & Contrast Adjustment Overlay
+                        grading?.let { g ->
+                            if (g.brightness > 0f) {
+                                drawRect(Color.White, blendMode = BlendMode.Plus, alpha = (g.brightness * 0.8f).coerceIn(0f, 0.8f))
+                            } else if (g.brightness < 0f) {
+                                drawRect(Color.Black, blendMode = BlendMode.Multiply, alpha = (-g.brightness * 0.8f).coerceIn(0f, 0.8f))
+                            }
+                        }
+                    }
             )
         }
     }

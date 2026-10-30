@@ -44,21 +44,7 @@ class AutoCaptionHelper(private val context: Context) {
             return@withContext emptyList()
         }
 
-        // CapCut-style dynamic speech phrases for offline automatic caption generation
-        val samplePhrases = listOf(
-            "Welcome back to another video",
-            "Today we are exploring something amazing",
-            "Check out this smooth edit in LibreCut RS",
-            "Notice the speed ramping and crisp transitions",
-            "Everything is processed natively in Rust",
-            "Zero internet connection required",
-            "Pure offline privacy and speed",
-            "Rendered with Vulkan compute acceleration",
-            "Don't forget to like and subscribe",
-            "See you in the next edit!"
-        )
-
-        var phraseIndex = 0
+        var segmentCount = 1
 
         activeClips.forEach { sourceClip ->
             val clipStart = sourceClip.timeline_start_ms
@@ -69,14 +55,14 @@ class AutoCaptionHelper(private val context: Context) {
                 val segDuration = minOf(subtitleIntervalMs, clipDuration - cursor)
                 if (segDuration < 600L) break
 
-                val phrase = samplePhrases[phraseIndex % samplePhrases.size]
-                phraseIndex++
-
                 val captionStart = clipStart + cursor
                 val captionEnd = captionStart + segDuration
 
+                val captionText = "Caption $segmentCount (${(captionStart / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }})"
+                segmentCount++
+
                 val textEffect = EffectConfig.TextOverlay(
-                    text = phrase,
+                    text = captionText,
                     font_size = 22f,
                     x = 0.5f,
                     y = 0.82f,
