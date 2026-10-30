@@ -96,5 +96,44 @@ object ThumbnailCache {
             null
         }
     }
+
+    /**
+     * 100% Offline On-Device Image Background Removal / Cutout
+     */
+    fun removeBackgroundFromBitmap(source: Bitmap, threshold: Float = 0.45f, invert: Boolean = false): Bitmap {
+        val width = source.width
+        val height = source.height
+        val result = source.copy(Bitmap.Config.ARGB_8888, true)
+        val pixels = IntArray(width * height)
+        result.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        val c1 = pixels[0]
+        val c2 = pixels[width - 1]
+        val c3 = pixels[(height - 1) * width]
+        val c4 = pixels[width * height - 1]
+
+        val refR = ((c1 shr 16 and 0xFF) + (c2 shr 16 and 0xFF) + (c3 shr 16 and 0xFF) + (c4 shr 16 and 0xFF)) / 4
+        val refG = ((c1 shr 8 and 0xFF) + (c2 shr 8 and 0xFF) + (c3 shr 8 and 0xFF) + (c4 shr 8 and 0xFF)) / 4
+        val refB = ((c1 and 0xFF) + (c2 and 0xFF) + (c3 and 0xFF) + (c4 and 0xFF)) / 4
+
+        val threshSq = (threshold * 441.67f) * (threshold * 441.67f)
+
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+
+            val distSq = (r - refR) * (r - refR) + (g - refG) * (g - refG) + (b - refB) * (b - refB)
+            val isBg = if (invert) distSq > threshSq else distSq <= threshSq
+
+            if (isBg) {
+                pixels[i] = 0x00000000
+            }
+        }
+
+        result.setPixels(pixels, 0, width, 0, 0, width, height)
+        return result
+    }
 }
 

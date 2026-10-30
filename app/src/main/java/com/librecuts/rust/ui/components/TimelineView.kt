@@ -7,10 +7,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +24,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,11 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.librecuts.rust.engine.Clip
@@ -101,82 +107,194 @@ fun TimelineView(
         zoomScale = (zoomScale * zoomChange).coerceIn(0.01f, 0.5f)
     }
 
-    Box(
+    Row(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
-            .transformable(state = transformState)
-            .horizontalScroll(scrollState)
-            .pointerInput(totalDurationMs) {
-                detectTapGestures { offset ->
-                    val clickedTimeMs = (offset.x / zoomScale).toLong()
-                    onSeekPosition(applySnap(clickedTimeMs))
-                }
-            }
-            .pointerInput(totalDurationMs) {
-                detectDragGestures { change, _ ->
-                    change.consume()
-                    val draggedTimeMs = (change.position.x / zoomScale).toLong()
-                    onSeekPosition(applySnap(draggedTimeMs))
-                }
-            }
+            .fillMaxSize()
     ) {
+        // Left Space Sidebar: Track Headers & 3-Lines Timestamp Scrubbing Drag Handle
         Column(
             modifier = Modifier
-                .width(totalWidthDp)
-                .fillMaxSize()
+                .width(48.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
         ) {
-            // Time Ruler
-            TimeRuler(
-                durationMs = totalDurationMs,
-                scale = zoomScale,
+            // Three-Lines Jog Scrubber Handle by the Left Space
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-
-            // Tracks
-            composition.tracks.forEach { track ->
-                TrackRow(
-                    track = track,
-                    scale = zoomScale,
-                    selectedClipId = selectedClipId,
-                    onClipSelected = { clip ->
-                        haptics.tick()
-                        onClipSelected(clip)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
+                    .pointerInput(totalDurationMs) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            val deltaMs = (dragAmount.x * 20L + dragAmount.y * 10L).toLong()
+                            val newMs = (currentPositionMs + deltaMs).coerceIn(0L, totalDurationMs)
+                            onSeekPosition(applySnap(newMs))
+                        }
                     },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Scrub Timestamps Handle",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // Track Headers with 3-Lines Grip and Icons
+            composition.tracks.forEach { track ->
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
                         .padding(vertical = 3.dp)
-                )
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DragHandle,
+                            contentDescription = "Track Reorder Handle",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Icon(
+                            imageVector = when (track.track_type) {
+                                TrackType.Video -> Icons.Default.Videocam
+                                TrackType.Audio -> Icons.Default.GraphicEq
+                                TrackType.Overlay -> Icons.Default.Layers
+                                TrackType.Text -> Icons.Default.TextFields
+                            },
+                            contentDescription = null,
+                            tint = when (track.track_type) {
+                                TrackType.Video -> TrackVideoColor
+                                TrackType.Audio -> TrackAudioColor
+                                TrackType.Overlay -> TrackOverlayColor
+                                TrackType.Text -> Color(0xFF00E5FF)
+                            },
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
 
-        // Playhead Scrubber Needle
-        val playheadOffsetDp = (currentPositionMs * zoomScale).dp
-        Canvas(
+        // Main Scrollable Timeline Tracks
+        Box(
             modifier = Modifier
-                .offset(x = playheadOffsetDp)
-                .width(4.dp)
-                .fillMaxSize()
+                .weight(1f)
+                .fillMaxHeight()
+                .transformable(state = transformState)
+                .horizontalScroll(scrollState)
+                .pointerInput(totalDurationMs) {
+                    detectTapGestures { offset ->
+                        val clickedTimeMs = (offset.x / zoomScale).toLong()
+                        onSeekPosition(applySnap(clickedTimeMs))
+                    }
+                }
+                .pointerInput(totalDurationMs) {
+                    detectDragGestures { change, _ ->
+                        change.consume()
+                        val draggedTimeMs = (change.position.x / zoomScale).toLong()
+                        onSeekPosition(applySnap(draggedTimeMs))
+                    }
+                }
         ) {
-            // Draw Playhead Top Flag
-            val headPath = Path().apply {
-                moveTo(-12f, 0f)
-                lineTo(12f, 0f)
-                lineTo(0f, 18f)
-                close()
-            }
-            drawPath(path = headPath, color = Color(0xFFFF5252))
+            Column(
+                modifier = Modifier
+                    .width(totalWidthDp)
+                    .fillMaxSize()
+            ) {
+                // Time Ruler
+                TimeRuler(
+                    durationMs = totalDurationMs,
+                    scale = zoomScale,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
 
-            // Playhead Vertical Line
-            drawLine(
-                color = Color(0xFFFF5252),
-                start = Offset(0f, 0f),
-                end = Offset(0f, size.height),
-                strokeWidth = 3f
-            )
+                // Tracks
+                composition.tracks.forEach { track ->
+                    TrackRow(
+                        track = track,
+                        scale = zoomScale,
+                        selectedClipId = selectedClipId,
+                        onClipSelected = { clip ->
+                            haptics.tick()
+                            onClipSelected(clip)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(vertical = 3.dp)
+                    )
+                }
+            }
+
+            // Playhead Scrubber Needle with Real-Time Floating Timecode Badge
+            val playheadOffsetDp = (currentPositionMs * zoomScale).dp
+            val min = currentPositionMs / 60000
+            val sec = (currentPositionMs % 60000) / 1000
+            val ms = currentPositionMs % 1000
+            val timecodeStr = String.format("%02d:%02d.%03d", min, sec, ms)
+
+            Box(
+                modifier = Modifier
+                    .offset(x = playheadOffsetDp - 28.dp)
+                    .width(56.dp)
+                    .fillMaxHeight()
+            ) {
+                // Floating timestamp bubble above playhead
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color(0xFF00E5FF),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 2.dp)
+                ) {
+                    Text(
+                        text = timecodeStr,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+
+                // Playhead Needle Line
+                Canvas(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 18.dp)
+                        .width(4.dp)
+                        .fillMaxHeight()
+                ) {
+                    // Playhead Flag
+                    val headPath = Path().apply {
+                        moveTo(-6f, 0f)
+                        lineTo(6f, 0f)
+                        lineTo(0f, 10f)
+                        close()
+                    }
+                    drawPath(path = headPath, color = Color(0xFF00E5FF))
+
+                    // Playhead Vertical Line
+                    drawLine(
+                        color = Color(0xFF00E5FF),
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = 2.5f
+                    )
+                }
+            }
         }
     }
 }
@@ -238,70 +356,51 @@ private fun TrackRow(
                 modifier = Modifier
                     .offset(x = startDp)
                     .width(widthDp)
-                    .fillMaxSize()
-                    .padding(horizontal = 1.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary else clipColor)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isSelected) clipColor else clipColor.copy(alpha = 0.75f))
                     .pointerInput(clip.id) {
-                        detectTapGestures { onClipSelected(clip) }
-                    },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                // Audio Waveform Simulation Canvas
-                if (track.track_type == TrackType.Audio) {
-                    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
-                        val numBars = (size.width / 6f).toInt().coerceAtLeast(5)
-                        for (i in 0 until numBars) {
-                            val barX = i * 6f
-                            val pseudoHeight = ((Math.sin(i * 0.8) + 1.2) * (size.height / 3f)).toFloat()
-                            val topY = (size.height - pseudoHeight) / 2f
-                            drawLine(
-                                color = Color.White.copy(alpha = 0.3f),
-                                start = Offset(barX, topY),
-                                end = Offset(barX, topY + pseudoHeight),
-                                strokeWidth = 2.5f
-                            )
+                        detectTapGestures {
+                            onClipSelected(clip)
                         }
                     }
-                }
-
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 6.dp),
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = when (track.track_type) {
                             TrackType.Video -> Icons.Default.Videocam
                             TrackType.Audio -> Icons.Default.GraphicEq
-                            TrackType.Overlay -> Icons.Default.Videocam
+                            TrackType.Overlay -> Icons.Default.Layers
                             TrackType.Text -> Icons.Default.TextFields
                         },
                         contentDescription = null,
-                        modifier = Modifier.size(13.dp),
-                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(16.dp)
                     )
-                    if (widthDp >= 50.dp) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${clip.durationMs / 1000}s",
-                            fontSize = 11.sp,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = clip.id.take(8),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
                 }
 
                 // Render Keyframe Diamond Markers on Clip
                 clip.keyframes.forEach { kf ->
                     val kfOffsetDp = (kf.timeMs * scale).dp
-                    Box(
+                    Icon(
+                        imageVector = Icons.Default.Diamond,
+                        contentDescription = "Keyframe",
+                        tint = Color(0xFF00E5FF),
                         modifier = Modifier
                             .offset(x = kfOffsetDp)
-                            .align(Alignment.CenterStart)
-                            .size(10.dp)
-                            .rotate(45f)
-                            .background(Color(0xFFFFEB3B), RoundedCornerShape(2.dp))
+                            .align(Alignment.BottomStart)
+                            .size(11.dp)
                     )
                 }
             }

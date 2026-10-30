@@ -2,22 +2,26 @@
   <defs>
     <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
     </linearGradient>
   </defs>
   <!-- Clean Plain Light Blue Rounded App Icon Background -->
   <rect width="512" height="512" rx="112" fill="url(#skyGrad)"/>
   
   <!-- Subtle Internal Glow Outline -->
-  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="6"/>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="4"/>
 
-  <!-- Minimalist Clean White Film Cut / Play Geometry -->
-  <path d="M160 132 C144 132 132 144 132 160 L132 352 C132 368 144 380 160 380 L352 380 C368 380 380 368 380 352 L380 160 C380 144 368 132 352 132 Z" fill="#FFFFFF"/>
+  <!-- Minimalist Clean White Play/Cut Geometry in Center -->
+  <polygon points="184,148 348,256 184,364" fill="#FFFFFF"/>
   
-  <!-- Sharp Playhead Cutout Inside Frame -->
-  <polygon points="216,188 328,256 216,324" fill="#0284C7"/>
-  
-  <!-- Sleek Top-Right Diagonal Precision Cut -->
-  <polygon points="320,148 364,148 364,192" fill="#38BDF8"/>
+  <!-- Sleek Cut Accent Geometry -->
+  <polygon points="280,188 348,232 328,244 260,198" fill="#0284C7"/>
+
+  <!-- Signature "R" Corner Badge (LibreCut RS) -->
+  <g transform="translate(348, 348)">
+    <!-- Subtle pill backdrop -->
+    <rect x="-8" y="-8" width="96" height="96" rx="20" fill="#0284C7" fill-opacity="0.3"/>
+    <!-- Crisp bold R glyph -->
+    <path d="M12 12 L44 12 C58 12 68 18 68 30 C68 40 60 46 50 48 L72 80 L56 80 L36 49 L24 49 L24 80 L12 80 Z M24 22 L24 39 L42 39 C50 39 56 36 56 30.5 C56 25 50 22 42 22 Z" fill="#FFFFFF"/>
+  </g>
 </svg>
-

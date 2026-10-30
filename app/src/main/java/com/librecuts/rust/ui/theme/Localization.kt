@@ -84,6 +84,10 @@ data class AppStrings(
     val animations: String,
     val layoutPlugins: String,
     val layoutPluginsDesc: String,
+    val jumpToTimestamp: String,
+    val previousCut: String,
+    val nextCut: String,
+    val auditionSound: String,
 
     // Effects Sheet
     val clipAdjustments: String,
@@ -192,6 +196,10 @@ val EnglishStrings = AppStrings(
     animations = "Animations",
     layoutPlugins = "Layout & Plugins",
     layoutPluginsDesc = "Customize track layout and community modules",
+    jumpToTimestamp = "Jump to Timestamp",
+    previousCut = "Previous Cut",
+    nextCut = "Next Cut",
+    auditionSound = "Audition Sound",
 
     clipAdjustments = "Clip Adjustments",
     playbackSpeed = "Playback Speed",
@@ -298,6 +306,10 @@ val SpanishStrings = AppStrings(
     animations = "Animaciones",
     layoutPlugins = "Diseño y plugins",
     layoutPluginsDesc = "Personalizar orden de pistas y módulos",
+    jumpToTimestamp = "Saltar a marca de tiempo",
+    previousCut = "Corte anterior",
+    nextCut = "Siguiente corte",
+    auditionSound = "Escuchar sonido",
 
     clipAdjustments = "Ajustes del clip",
     playbackSpeed = "Velocidad de reproducción",
@@ -404,6 +416,10 @@ val PolishStrings = AppStrings(
     animations = "Animacje",
     layoutPlugins = "Układ i wtyczki",
     layoutPluginsDesc = "Dostosuj kolejność ścieżek i moduły",
+    jumpToTimestamp = "Skocz do znacznika czasu",
+    previousCut = "Poprzednie cięcie",
+    nextCut = "Następne cięcie",
+    auditionSound = "Odsłuchaj dźwięk",
 
     clipAdjustments = "Dostosowanie klipu",
     playbackSpeed = "Prędkość odtwarzania",

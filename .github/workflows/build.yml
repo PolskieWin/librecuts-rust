@@ -78,38 +78,47 @@ jobs:
           name: librecuts-rust-release-apks
           path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.1
+      - name: Publish GitHub Release v2.4.2
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.4.1
-          name: "LibreCut RS v2.4.1 - Interactive Transforms, Real SFX & Precision Audio Boost"
+          tag_name: v2.4.2
+          name: "LibreCut RS v2.4.2 - CapCut & Alight Motion UI Layouts, Precision Timestamps & Live Keyframing"
           draft: false
           prerelease: false
           make_latest: true
           files: release-apks/*.apk
           body: |
-            # LibreCut RS v2.4.1
+            # LibreCut RS v2.4.2
 
             > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
             > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Electric Blue*
 
-            A major stability, transform, audio, and subtitle update for LibreCut RS.
+            A massive feature, modular layout, keyframing, and precision navigation update for LibreCut RS.
 
             ---
 
             ### 📦 Download Variants
-            - **Universal APK (`LibreCut-RS-v2.4.1-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (higher MB).
-            - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.1-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (lower MB, ~3 MB).
-            - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.1-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (lower MB, ~2.8 MB).
-            - **x86_64 APK (`LibreCut-RS-v2.4.1-x86_64.apk`)**: For Android emulators and Chromebooks (lower MB, ~3.1 MB).
+            - **Universal APK (`LibreCut-RS-v2.4.2-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (higher MB).
+            - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.2-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (lower MB, ~3 MB).
+            - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.2-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (lower MB, ~2.8 MB).
+            - **x86_64 APK (`LibreCut-RS-v2.4.2-x86_64.apk`)**: For Android emulators and Chromebooks (lower MB, ~3.1 MB).
 
             ---
 
-            ### ✨ What's New in v2.4.1
-            - **Interactive Resizing & Moving (Pinch & Pan Gestures)**: Pinch-to-zoom to resize and drag to move photos, videos, and text overlays directly on the live preview screen.
-            - **Hardware-Accelerated Audio Boost (up to 200%)**: Integrated Android `LoudnessEnhancer` hardware audio processor so boosting volume above 100% genuinely amplifies audio playback and preview.
-            - **Real Sound Effects Engine**: Built-in 100% offline PCM WAV audio synthesizer generating authentic, broadcast-quality audio files (*Cinematic Boom*, *Fast Air Whoosh*, *UI Pop Click*, *Tension Riser*, *Vinyl Scratch*) that play natively in ExoPlayer and render in exported videos.
-            - **Custom Script & Lyrics Subtitle Tool**: Paste scripts, song lyrics, or dialogue to instantly generate timed subtitle clips along the timeline. Tap any subtitle on screen to edit its text, font size, and color!
-            - **Active Clip Resolution Fix**: Live preview player dynamically follows the playhead across cuts and multiple clips, guaranteeing color grading, filters, and volume apply instantly.
-            - **Background Progress Preservation**: Seamlessly restores your active project and playhead position even if Android suspends or kills the app in the background.
+            ### ✨ What's New in v2.4.2
+            - **Minimalist Icon with Corner "R" Glyph**: Ultra-clean light blue icon (`#38BDF8`) with white geometric cut and signature stylized "R" corner badge (`ic_launcher.xml` and `logo.svg`).
+            - **Pre-Made UI Layout Plugins**:
+              - **LibreCut RS Standard**: Starts normally with classic categorized toolbar tabs.
+              - **CapCut Pro Layout**: Streamlined lower ribbon dock, floating split/speed/keyframe pill below preview, and centered playhead.
+              - **Alight Motion Layout**: Layer & motion-design focused interface with curve easing dock and vertical stacked track controls.
+            - **Precision Timestamp Navigation**:
+              - Live Timecode badge (`00:01.450 / 00:10.000`) with instant "Jump to Timestamp" dialog.
+              - 3-lines timeline jog scrubber handle on the left margin for tactile timestamp seeking.
+              - Frame Stepping (`< 1f` / `1f >`) for 33ms frame-accurate cutting.
+              - Cut Jump buttons (`|<<` / `>>|`) to snap directly to clip transitions.
+            - **CapCut Auto-Keyframing & Smooth Interpolation**: Transforming (pan/zoom/rotation) any video or photo overlay automatically creates/updates keyframes at the current playhead, with seamless linear interpolation during playback.
+            - **Smaller Image Spawning & PiP Overlays**: Photos, stickers, and cutouts now spawn smaller than the video (`scale = 0.55f`, 240dp max) on an Overlay track, ready to drag, resize, and animate.
+            - **Live In/Out Animations & Cut Transitions**: In/Out animations (Zoom In/Out, Fade, Spin, Bounce, Slide, Pulse) and cut transitions (CrossDissolve, Slide, Wipe, Zoom) now dynamically render based on elapsed clip playback time.
+            - **Synchronized Audio & Sound Effects Engine**: Built-in real-time audition player in the Audio sheet, and synchronized audio track playback in the preview player.
+            - **Custom Font .ZIP Extraction**: Automatic extraction of `.ttf` and `.otf` fonts directly from `.zip` bundles (DaFont / Google Fonts) with thread-safe memory caching.

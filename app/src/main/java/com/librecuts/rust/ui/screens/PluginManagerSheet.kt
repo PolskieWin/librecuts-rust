@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.GraphicEq
@@ -210,6 +211,15 @@ fun PluginManagerSheet(
                 },
                 leadingIcon = { Icon(Icons.Default.GraphicEq, contentDescription = null, modifier = Modifier.size(14.dp)) },
                 label = { Text("Audio", fontSize = 12.sp) }
+            )
+            FilterChip(
+                selected = selectedCategory == PluginCategory.UI_LAYOUT,
+                onClick = {
+                    haptics.tick()
+                    selectedCategory = PluginCategory.UI_LAYOUT
+                },
+                leadingIcon = { Icon(Icons.Default.Dashboard, contentDescription = null, modifier = Modifier.size(14.dp)) },
+                label = { Text("UI Layouts", fontSize = 12.sp) }
             )
         }
 

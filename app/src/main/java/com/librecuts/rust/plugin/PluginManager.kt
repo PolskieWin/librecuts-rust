@@ -10,6 +10,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 
+enum class UiLayoutMode(val displayName: String) {
+    STANDARD("LibreCut RS Standard"),
+    CAPCUT("CapCut Pro Layout"),
+    ALIGHT_MOTION("Alight Motion Layout")
+}
+
 class PluginManager(private val context: Context) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -39,7 +45,23 @@ class PluginManager(private val context: Context) {
                     null
                 }
             }
-            _plugins.value = list
+            // Ensure built-in UI plugins exist
+            val hasCapcut = list.any { it.id == "org.community.ui.capcut" }
+            val hasAlight = list.any { it.id == "org.community.ui.alight_motion" }
+            if (!hasCapcut || !hasAlight) {
+                installMissingUiPlugins(list)
+            } else {
+                _plugins.value = list
+            }
+        }
+    }
+
+    fun getActiveUiLayout(): UiLayoutMode {
+        val list = _plugins.value
+        return when {
+            list.find { it.id == "org.community.ui.capcut" }?.enabled == true -> UiLayoutMode.CAPCUT
+            list.find { it.id == "org.community.ui.alight_motion" }?.enabled == true -> UiLayoutMode.ALIGHT_MOTION
+            else -> UiLayoutMode.STANDARD
         }
     }
 
@@ -60,15 +82,62 @@ class PluginManager(private val context: Context) {
     }
 
     fun togglePlugin(pluginId: String, enabled: Boolean) {
+        val targetPlugin = _plugins.value.find { it.id == pluginId }
+        val isUiPlugin = targetPlugin?.category == PluginCategory.UI_LAYOUT
+
         val updated = _plugins.value.map {
-            if (it.id == pluginId) it.copy(enabled = enabled) else it
+            if (it.id == pluginId) {
+                it.copy(enabled = enabled)
+            } else if (isUiPlugin && enabled && it.category == PluginCategory.UI_LAYOUT) {
+                // Only one UI layout plugin active at a time
+                it.copy(enabled = false)
+            } else {
+                it
+            }
         }
         _plugins.value = updated
+
         // Persist change
-        updated.find { it.id == pluginId }?.let { plugin ->
+        updated.forEach { plugin ->
             val file = File(pluginsDir, "${plugin.id}.json")
-            file.writeText(json.encodeToString(LibreCutPlugin.serializer(), plugin))
+            try {
+                file.writeText(json.encodeToString(LibreCutPlugin.serializer(), plugin))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
+    }
+
+    private fun installMissingUiPlugins(existing: List<LibreCutPlugin>) {
+        val uiPlugins = listOf(
+            LibreCutPlugin(
+                id = "org.community.ui.capcut",
+                name = "CapCut Pro Layout",
+                version = "1.0.0",
+                author = "Community UX Lab",
+                description = "Streamlined bottom ribbon dock, centered playhead, floating quick-cut action pill, and dynamic toolbar.",
+                category = PluginCategory.UI_LAYOUT,
+                enabled = false
+            ),
+            LibreCutPlugin(
+                id = "org.community.ui.alight_motion",
+                name = "Alight Motion Layout",
+                version = "1.0.0",
+                author = "MotionDesign FOSS",
+                description = "Layer-focused layout with stacked vertical track headers, curve graph dock, and keyframe property panel.",
+                category = PluginCategory.UI_LAYOUT,
+                enabled = false
+            )
+        )
+        val combined = existing.toMutableList()
+        uiPlugins.forEach { p ->
+            if (combined.none { it.id == p.id }) {
+                combined.add(p)
+                val file = File(pluginsDir, "${p.id}.json")
+                file.writeText(json.encodeToString(LibreCutPlugin.serializer(), p))
+            }
+        }
+        _plugins.value = combined
     }
 
     private fun installDefaultCommunityPlugins() {
@@ -123,6 +192,24 @@ class PluginManager(private val context: Context) {
                     PluginParameter("clarity_boost", "Presence Boost", ParamType.SLIDER, 0.5f, 0f, 1f),
                     PluginParameter("de_ess", "De-Esser", ParamType.TOGGLE, 1.0f, 0f, 1f)
                 )
+            ),
+            LibreCutPlugin(
+                id = "org.community.ui.capcut",
+                name = "CapCut Pro Layout",
+                version = "1.0.0",
+                author = "Community UX Lab",
+                description = "Streamlined bottom ribbon dock, centered playhead, floating quick-cut action pill, and dynamic toolbar.",
+                category = PluginCategory.UI_LAYOUT,
+                enabled = false
+            ),
+            LibreCutPlugin(
+                id = "org.community.ui.alight_motion",
+                name = "Alight Motion Layout",
+                version = "1.0.0",
+                author = "MotionDesign FOSS",
+                description = "Layer-focused layout with stacked vertical track headers, curve graph dock, and keyframe property panel.",
+                category = PluginCategory.UI_LAYOUT,
+                enabled = false
             )
         )
 
@@ -133,4 +220,3 @@ class PluginManager(private val context: Context) {
         _plugins.value = defaultPlugins
     }
 }
-

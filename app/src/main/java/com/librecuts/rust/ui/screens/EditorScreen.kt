@@ -42,6 +42,8 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Extension
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -51,10 +53,18 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import com.librecuts.rust.engine.ThumbnailCache
+import com.librecuts.rust.plugin.UiLayoutMode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -162,6 +172,19 @@ fun EditorScreen(
     var showMediaImportSheet by remember { mutableStateOf(false) }
     var showTransitionsSheet by remember { mutableStateOf(false) }
     var showAnimationsSheet by remember { mutableStateOf(false) }
+    var showJumpTimestampDialog by remember { mutableStateOf(false) }
+    val activeUiLayout = pluginManager.getActiveUiLayout()
+
+    val cutPoints = remember(composition) {
+        val pts = mutableListOf(0L)
+        composition.tracks.forEach { trk ->
+            trk.clips.forEach { c ->
+                pts.add(c.timeline_start_ms)
+                pts.add(c.timeline_start_ms + c.durationMs)
+            }
+        }
+        pts.distinct().sorted()
+    }
 
     var projectTimeSpentSeconds by remember(project.id) { mutableLongStateOf(project.timeSpentSeconds) }
 
@@ -226,13 +249,13 @@ fun EditorScreen(
         )
     }
 
-    // Image Import Picker Contract
+    // Image Import Picker Contract (Spawns smaller than video on Overlay track)
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             scope.launch {
-                var timelineOffset = composition.totalDurationMs
+                var timelineOffset = currentPositionMs
                 val newClips = mutableListOf<Clip>()
 
                 uris.forEach { uri ->
@@ -244,21 +267,31 @@ fun EditorScreen(
                             file_path = localPath,
                             source_start_ms = 0L,
                             source_end_ms = imgDurationMs,
-                            timeline_start_ms = timelineOffset
+                            timeline_start_ms = timelineOffset,
+                            keyframes = listOf(
+                                Keyframe(timeMs = 0L, scale = 0.55f, x = 0f, y = 0f)
+                            )
                         )
                     )
                     timelineOffset += imgDurationMs
                 }
 
-                val updatedTracks = composition.tracks.map { track ->
-                    if (track.track_type == TrackType.Video) {
+                val hasOverlayTrack = composition.tracks.any { it.track_type == TrackType.Overlay }
+                val baseTracks = if (!hasOverlayTrack) {
+                    composition.tracks + Track(id = "track_overlay", track_type = TrackType.Overlay)
+                } else {
+                    composition.tracks
+                }
+
+                val updatedTracks = baseTracks.map { track ->
+                    if (track.track_type == TrackType.Overlay) {
                         track.copy(clips = track.clips + newClips)
                     } else track
                 }
                 updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                 selectedClipId = newClips.firstOrNull()?.id
                 haptics.split()
-                Toast.makeText(context, "Imported ${newClips.size} images!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Added ${newClips.size} image(s) smaller than video!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -483,7 +516,7 @@ fun EditorScreen(
             )
         },
         bottomBar = {
-            // Categorized Bottom Action Toolbar with Direct Selectors (Media, SFX, Subtitles, Transitions, Animations, FX, Plugins, Export)
+            // Adaptive Bottom Action Toolbar (Adapts dynamically to CapCut, Alight Motion, or Standard layout)
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 8.dp,
@@ -499,108 +532,223 @@ fun EditorScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Media (Add Videos / Import Images)
-                    BottomToolbarItem(
-                        icon = Icons.Default.VideoCall,
-                        label = strings.addClips,
-                        onClick = {
-                            haptics.tick()
-                            showMediaImportSheet = true
+                    when (activeUiLayout) {
+                        UiLayoutMode.CAPCUT -> {
+                            // CapCut Pro Streamlined Tool Ribbon
+                            BottomToolbarItem(
+                                icon = Icons.Default.CallSplit,
+                                label = "Split",
+                                onClick = {
+                                    haptics.split()
+                                    val target = selectedClip ?: composition.tracks.flatMap { it.clips }.find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+                                    target?.let { clip ->
+                                        val offset = currentPositionMs - clip.timeline_start_ms
+                                        val srcOffset = (offset * clip.speed).toLong()
+                                        if (offset in 50 until clip.durationMs) {
+                                            val c1 = clip.copy(id = UUID.randomUUID().toString(), source_end_ms = clip.source_start_ms + srcOffset)
+                                            val c2 = clip.copy(id = UUID.randomUUID().toString(), source_start_ms = clip.source_start_ms + srcOffset, timeline_start_ms = currentPositionMs)
+                                            val trks = composition.tracks.map { trk -> trk.copy(clips = trk.clips.flatMap { if (it.id == clip.id) listOf(c1, c2) else listOf(it) }) }
+                                            updateCompositionWithUndo(composition.copy(tracks = trks))
+                                            selectedClipId = c2.id
+                                        }
+                                    }
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.LibraryMusic,
+                                label = "Audio / SFX",
+                                onClick = { haptics.tick(); showAudioSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Subtitles,
+                                label = "Text & Subs",
+                                onClick = { haptics.tick(); showSubtitleSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Image,
+                                label = "Overlay / PIP",
+                                onClick = { haptics.tick(); imagePickerLauncher.launch("image/*") }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.AutoFixHigh,
+                                label = "Effects",
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Animation,
+                                label = "Transitions",
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) showTransitionsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Speed,
+                                label = "Curve Speed",
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Extension,
+                                label = "Layout / UI",
+                                onClick = { haptics.tick(); showPluginManagerSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.FileUpload,
+                                label = strings.export,
+                                isHighlight = true,
+                                onClick = { haptics.snap(); showExportDialog = true }
+                            )
                         }
-                    )
-
-                    // 2. Audio & SFX
-                    BottomToolbarItem(
-                        icon = Icons.Default.LibraryMusic,
-                        label = strings.addAudio,
-                        onClick = {
-                            haptics.tick()
-                            showAudioSheet = true
+                        UiLayoutMode.ALIGHT_MOTION -> {
+                            // Alight Motion Layer & Motion Design Ribbon
+                            BottomToolbarItem(
+                                icon = Icons.Default.VideoCall,
+                                label = "Add Layer",
+                                onClick = { haptics.tick(); showMediaImportSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Diamond,
+                                label = "Keyframe",
+                                onClick = {
+                                    val target = selectedClip ?: composition.tracks.flatMap { it.clips }.find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+                                    target?.let { clip ->
+                                        val offset = (currentPositionMs - clip.timeline_start_ms).coerceIn(0L, clip.durationMs)
+                                        val hasKf = clip.keyframes.any { Math.abs(it.timeMs - offset) < 150L }
+                                        val newKfs = if (hasKf) clip.keyframes.filterNot { Math.abs(it.timeMs - offset) < 150L } else clip.keyframes + Keyframe(timeMs = offset)
+                                        val trks = composition.tracks.map { trk -> trk.copy(clips = trk.clips.map { if (it.id == clip.id) it.copy(keyframes = newKfs) else it }) }
+                                        updateCompositionWithUndo(composition.copy(tracks = trks))
+                                        haptics.snap()
+                                    }
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Timeline,
+                                label = "Easing Graph",
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.AutoAwesome,
+                                label = "Animations",
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) showAnimationsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.LibraryMusic,
+                                label = "Audio / SFX",
+                                onClick = { haptics.tick(); showAudioSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Extension,
+                                label = "Plugins",
+                                onClick = { haptics.tick(); showPluginManagerSheet = true }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.FileUpload,
+                                label = strings.export,
+                                isHighlight = true,
+                                onClick = { haptics.snap(); showExportDialog = true }
+                            )
                         }
-                    )
-
-                    // 3. Subtitles & Auto Captions
-                    BottomToolbarItem(
-                        icon = Icons.Default.Subtitles,
-                        label = strings.addSubtitles,
-                        onClick = {
-                            haptics.tick()
-                            showSubtitleSheet = true
+                        UiLayoutMode.STANDARD -> {
+                            // Standard LibreCut RS Categorized Bottom Action Toolbar
+                            BottomToolbarItem(
+                                icon = Icons.Default.VideoCall,
+                                label = strings.addClips,
+                                onClick = {
+                                    haptics.tick()
+                                    showMediaImportSheet = true
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.LibraryMusic,
+                                label = strings.addAudio,
+                                onClick = {
+                                    haptics.tick()
+                                    showAudioSheet = true
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Subtitles,
+                                label = strings.addSubtitles,
+                                onClick = {
+                                    haptics.tick()
+                                    showSubtitleSheet = true
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Animation,
+                                label = strings.transitions,
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) {
+                                        showTransitionsSheet = true
+                                    } else {
+                                        Toast.makeText(context, "Select a clip first to apply transitions", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.AutoAwesome,
+                                label = strings.animations,
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) {
+                                        showAnimationsSheet = true
+                                    } else {
+                                        Toast.makeText(context, "Select a clip first to apply animations", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.AutoFixHigh,
+                                label = strings.effects,
+                                onClick = {
+                                    haptics.tick()
+                                    if (selectedClip != null) {
+                                        showEffectsSheet = true
+                                    } else {
+                                        Toast.makeText(context, "Select a clip first to adjust", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Extension,
+                                label = strings.plugins,
+                                onClick = {
+                                    haptics.tick()
+                                    showPluginManagerSheet = true
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.Compress,
+                                label = strings.compress,
+                                onClick = {
+                                    haptics.tick()
+                                    showCompressDialog = true
+                                }
+                            )
+                            BottomToolbarItem(
+                                icon = Icons.Default.FileUpload,
+                                label = strings.export,
+                                isHighlight = true,
+                                onClick = {
+                                    haptics.snap()
+                                    showExportDialog = true
+                                }
+                            )
                         }
-                    )
-
-                    // 4. Transitions Direct Selector
-                    BottomToolbarItem(
-                        icon = Icons.Default.Animation,
-                        label = strings.transitions,
-                        onClick = {
-                            haptics.tick()
-                            if (selectedClip != null) {
-                                showTransitionsSheet = true
-                            } else {
-                                Toast.makeText(context, "Select a clip first to apply transitions", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-
-                    // 5. Animations Direct Selector
-                    BottomToolbarItem(
-                        icon = Icons.Default.AutoAwesome,
-                        label = strings.animations,
-                        onClick = {
-                            haptics.tick()
-                            if (selectedClip != null) {
-                                showAnimationsSheet = true
-                            } else {
-                                Toast.makeText(context, "Select a clip first to apply animations", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-
-                    // 6. Adjust & FX (Filters, Color Grading, Cutout, Mask, Crop)
-                    BottomToolbarItem(
-                        icon = Icons.Default.AutoFixHigh,
-                        label = strings.effects,
-                        onClick = {
-                            haptics.tick()
-                            if (selectedClip != null) {
-                                showEffectsSheet = true
-                            } else {
-                                Toast.makeText(context, "Select a clip first to adjust", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-
-                    // 7. Plugins & Layout Customizer
-                    BottomToolbarItem(
-                        icon = Icons.Default.Extension,
-                        label = strings.plugins,
-                        onClick = {
-                            haptics.tick()
-                            showPluginManagerSheet = true
-                        }
-                    )
-
-                    // 8. Compress
-                    BottomToolbarItem(
-                        icon = Icons.Default.Compress,
-                        label = strings.compress,
-                        onClick = {
-                            haptics.tick()
-                            showCompressDialog = true
-                        }
-                    )
-
-                    // 9. Export
-                    BottomToolbarItem(
-                        icon = Icons.Default.FileUpload,
-                        label = strings.export,
-                        isHighlight = true,
-                        onClick = {
-                            haptics.snap()
-                            showExportDialog = true
-                        }
-                    )
+                    }
                 }
             }
         }
@@ -627,13 +775,29 @@ fun EditorScreen(
                     .fillMaxWidth()
                     .weight(1.0f)
             ) {
+                val audioClips = composition.tracks
+                    .filter { it.track_type == TrackType.Audio }
+                    .flatMap { it.clips }
+
                 VideoPreviewPlayer(
                     videoUri = currentMediaUri,
                     activeClip = clipAtPlayhead,
+                    audioClips = audioClips,
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
                     onPositionChanged = { currentPositionMs = it },
                     onPlaybackEnded = { isPlaying = false },
+                    onKeyframeUpdated = { clipId, keyframe ->
+                        val updatedTracks = composition.tracks.map { track ->
+                            track.copy(clips = track.clips.map { c ->
+                                if (c.id == clipId) {
+                                    val filtered = c.keyframes.filterNot { Math.abs(it.timeMs - keyframe.timeMs) < 120L }
+                                    c.copy(keyframes = (filtered + keyframe).sortedBy { it.timeMs })
+                                } else c
+                            })
+                        }
+                        updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -663,6 +827,106 @@ fun EditorScreen(
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                // Render Active Overlay Clips (Photos / Stickers / Graphics spawned smaller than video)
+                val activeOverlayClip = composition.tracks
+                    .filter { it.track_type == TrackType.Overlay }
+                    .flatMap { it.clips }
+                    .firstOrNull { clip ->
+                        currentPositionMs in clip.timeline_start_ms..(clip.timeline_start_ms + clip.durationMs)
+                    }
+
+                activeOverlayClip?.let { ovClip ->
+                    val bgRemoval = ovClip.effects.filterIsInstance<EffectConfig.BackgroundRemoval>().firstOrNull()
+                    var ovBitmap by remember(ovClip.file_path, bgRemoval) { mutableStateOf<Bitmap?>(null) }
+
+                    LaunchedEffect(ovClip.file_path, bgRemoval) {
+                        withContext(Dispatchers.Default) {
+                            val raw = ThumbnailCache.getThumbnail(ovClip.file_path, 800, 800)
+                            if (raw != null && bgRemoval != null) {
+                                ovBitmap = ThumbnailCache.removeBackgroundFromBitmap(raw, bgRemoval.threshold, bgRemoval.invert)
+                            } else {
+                                ovBitmap = raw
+                            }
+                        }
+                    }
+
+                    val clipOffsetMs = (currentPositionMs - ovClip.timeline_start_ms).coerceAtLeast(0L)
+                    val sortedKfs = ovClip.keyframes.sortedBy { it.timeMs }
+                    val currentKf = if (sortedKfs.isEmpty()) {
+                        Keyframe(timeMs = 0L, scale = 0.55f, x = 0f, y = 0f)
+                    } else if (clipOffsetMs <= sortedKfs.first().timeMs) {
+                        sortedKfs.first()
+                    } else if (clipOffsetMs >= sortedKfs.last().timeMs) {
+                        sortedKfs.last()
+                    } else {
+                        val k1 = sortedKfs.last { it.timeMs <= clipOffsetMs }
+                        val k2 = sortedKfs.first { it.timeMs > clipOffsetMs }
+                        val factor = if (k2.timeMs == k1.timeMs) 0f else (clipOffsetMs - k1.timeMs).toFloat() / (k2.timeMs - k1.timeMs)
+                        Keyframe(
+                            timeMs = clipOffsetMs,
+                            x = k1.x + (k2.x - k1.x) * factor,
+                            y = k1.y + (k2.y - k1.y) * factor,
+                            scale = k1.scale + (k2.scale - k1.scale) * factor,
+                            rotation = k1.rotation + (k2.rotation - k1.rotation) * factor,
+                            opacity = k1.opacity + (k2.opacity - k1.opacity) * factor
+                        )
+                    }
+
+                    var ovPanX by remember(ovClip.id) { mutableFloatStateOf(0f) }
+                    var ovPanY by remember(ovClip.id) { mutableFloatStateOf(0f) }
+                    var ovScale by remember(ovClip.id) { mutableFloatStateOf(1f) }
+                    var ovRot by remember(ovClip.id) { mutableFloatStateOf(0f) }
+
+                    ovBitmap?.let { bmp ->
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .pointerInput(ovClip.id, clipOffsetMs) {
+                                    detectTransformGestures { _, pan, zoom, rotation ->
+                                        ovPanX += pan.x
+                                        ovPanY += pan.y
+                                        ovScale = (ovScale * zoom).coerceIn(0.15f, 4.0f)
+                                        ovRot += rotation
+
+                                        // Auto-create/update keyframe at current playhead (CapCut style)
+                                        val updatedKf = Keyframe(
+                                            timeMs = clipOffsetMs,
+                                            x = currentKf.x + ovPanX,
+                                            y = currentKf.y + ovPanY,
+                                            scale = (currentKf.scale * ovScale).coerceIn(0.1f, 4f),
+                                            rotation = currentKf.rotation + ovRot,
+                                            opacity = currentKf.opacity
+                                        )
+                                        val updatedKfs = (ovClip.keyframes.filterNot { Math.abs(it.timeMs - clipOffsetMs) < 120L } + updatedKf).sortedBy { it.timeMs }
+                                        val newTracks = composition.tracks.map { trk ->
+                                            if (trk.track_type == TrackType.Overlay) {
+                                                trk.copy(clips = trk.clips.map { if (it.id == ovClip.id) it.copy(keyframes = updatedKfs) else it })
+                                            } else trk
+                                        }
+                                        updateCompositionWithUndo(composition.copy(tracks = newTracks))
+                                    }
+                                }
+                                .graphicsLayer {
+                                    this.translationX = currentKf.x + ovPanX
+                                    this.translationY = currentKf.y + ovPanY
+                                    val totalScale = currentKf.scale * ovScale
+                                    this.scaleX = totalScale
+                                    this.scaleY = totalScale
+                                    this.rotationZ = currentKf.rotation + ovRot
+                                    this.alpha = currentKf.opacity
+                                }
+                        ) {
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "Image Overlay",
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .clip(RoundedCornerShape(8.dp))
                             )
                         }
                     }
@@ -722,26 +986,193 @@ fun EditorScreen(
                 }
             }
 
-            // Timeline Action Controls Toolbar
+            // CapCut Pro Layout: Floating Quick Action Pill above timeline
+            if (activeUiLayout == UiLayoutMode.CAPCUT) {
+                val targetForPill = selectedClip ?: composition.tracks
+                    .flatMap { it.clips }
+                    .find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+
+                if (targetForPill != null) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = {
+                                val splitTimelineOffset = currentPositionMs - targetForPill.timeline_start_ms
+                                val splitSourceOffset = (splitTimelineOffset * targetForPill.speed).toLong()
+                                if (splitTimelineOffset in 50 until targetForPill.durationMs) {
+                                    haptics.split()
+                                    val firstHalf = targetForPill.copy(id = UUID.randomUUID().toString(), source_end_ms = targetForPill.source_start_ms + splitSourceOffset)
+                                    val secondHalf = targetForPill.copy(id = UUID.randomUUID().toString(), source_start_ms = targetForPill.source_start_ms + splitSourceOffset, timeline_start_ms = currentPositionMs)
+                                    val updatedTracks = composition.tracks.map { track ->
+                                        track.copy(clips = track.clips.flatMap { if (it.id == targetForPill.id) listOf(firstHalf, secondHalf) else listOf(it) })
+                                    }
+                                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                                    selectedClipId = secondHalf.id
+                                }
+                            }) {
+                                Icon(Icons.Default.CallSplit, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Split", fontSize = 11.sp)
+                            }
+                            TextButton(onClick = { showEffectsSheet = true }) {
+                                Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Speed", fontSize = 11.sp)
+                            }
+                            TextButton(onClick = {
+                                val offsetMs = (currentPositionMs - targetForPill.timeline_start_ms).coerceIn(0L, targetForPill.durationMs)
+                                val hasKeyframe = targetForPill.keyframes.any { Math.abs(it.timeMs - offsetMs) < 150L }
+                                val updatedKeyframes = if (hasKeyframe) {
+                                    targetForPill.keyframes.filterNot { Math.abs(it.timeMs - offsetMs) < 150L }
+                                } else {
+                                    targetForPill.keyframes + Keyframe(timeMs = offsetMs)
+                                }
+                                val updatedTracks = composition.tracks.map { track ->
+                                    track.copy(clips = track.clips.map { if (it.id == targetForPill.id) it.copy(keyframes = updatedKeyframes) else it })
+                                }
+                                haptics.snap()
+                                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                            }) {
+                                Icon(Icons.Default.Diamond, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Keyframe", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Timeline Action Controls Toolbar & High-Precision Timestamp Navigation
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Play / Pause Toggle
-                IconButton(onClick = {
-                    haptics.tick()
-                    isPlaying = !isPlaying
-                }) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) strings.pause else strings.play,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                // Timestamp Navigation Controls (Play/Pause, Cut Jumps, Frame Stepping, Timecode Badge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        haptics.tick()
+                        isPlaying = !isPlaying
+                    }) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) strings.pause else strings.play,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Jump to Previous Cut (|<<)
+                    IconButton(
+                        onClick = {
+                            val prevCut = cutPoints.filter { it < currentPositionMs - 50L }.maxOrNull() ?: 0L
+                            currentPositionMs = prevCut
+                            haptics.snap()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = strings.previousCut,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Step 1 Frame Backwards (-33ms)
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                        modifier = Modifier
+                            .clickable {
+                                haptics.tick()
+                                currentPositionMs = (currentPositionMs - 33L).coerceAtLeast(0L)
+                            }
+                    ) {
+                        Text(
+                            text = "< 1f",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(3.dp))
+
+                    // Formatted Timecode Pill (Click to open Jump to Timestamp Dialog)
+                    val curMin = currentPositionMs / 60000
+                    val curSec = (currentPositionMs % 60000) / 1000
+                    val curMs = currentPositionMs % 1000
+                    val totMin = composition.totalDurationMs / 60000
+                    val totSec = (composition.totalDurationMs % 60000) / 1000
+                    val timecodeLabel = String.format("%02d:%02d.%03d / %02d:%02d", curMin, curSec, curMs, totMin, totSec)
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
+                        modifier = Modifier
+                            .clickable {
+                                haptics.tick()
+                                showJumpTimestampDialog = true
+                            }
+                    ) {
+                        Text(
+                            text = timecodeLabel,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(3.dp))
+
+                    // Step 1 Frame Forward (+33ms)
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                        modifier = Modifier
+                            .clickable {
+                                haptics.tick()
+                                currentPositionMs = (currentPositionMs + 33L).coerceAtMost(composition.totalDurationMs)
+                            }
+                    ) {
+                        Text(
+                            text = "1f >",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    // Jump to Next Cut (>>|)
+                    IconButton(
+                        onClick = {
+                            val nextCut = cutPoints.filter { it > currentPositionMs + 50L }.minOrNull() ?: composition.totalDurationMs
+                            currentPositionMs = nextCut
+                            haptics.snap()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = strings.nextCut,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 // Auto-detect clip under playhead if none explicitly tapped
@@ -1315,6 +1746,102 @@ fun EditorScreen(
             }
         )
     }
+
+    // Jump to Timestamp Dialog
+    if (showJumpTimestampDialog) {
+        JumpToTimestampDialog(
+            currentMs = currentPositionMs,
+            totalMs = composition.totalDurationMs,
+            onJump = { currentPositionMs = it },
+            onDismiss = { showJumpTimestampDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun JumpToTimestampDialog(
+    currentMs: Long,
+    totalMs: Long,
+    onJump: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var textInput by remember { mutableStateOf("") }
+    val strings = LocalAppStrings.current
+    val haptics = rememberHapticHelper()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.jumpToTimestamp, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    text = "Enter time in seconds (e.g. 12.5) or MM:SS (e.g. 01:30):",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = textInput,
+                    onValueChange = { textInput = it },
+                    placeholder = { Text("e.g. 00:05.500 or 10") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(0L to "0s", 1000L to "1s", 5000L to "5s", 10000L to "10s").forEach { (ms, lbl) ->
+                        OutlinedButton(
+                            onClick = {
+                                haptics.tick()
+                                onJump(ms.coerceIn(0L, totalMs))
+                                onDismiss()
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(lbl, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    haptics.snap()
+                    val parsedMs = parseTimeToMs(textInput, currentMs)
+                    onJump(parsedMs.coerceIn(0L, totalMs))
+                    onDismiss()
+                }
+            ) {
+                Text("Jump")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.cancel)
+            }
+        }
+    )
+}
+
+private fun parseTimeToMs(input: String, fallback: Long): Long {
+    val clean = input.trim()
+    if (clean.isEmpty()) return fallback
+    return try {
+        if (clean.contains(":")) {
+            val parts = clean.split(":")
+            val min = parts[0].toLong()
+            val sec = parts.getOrNull(1)?.toDouble() ?: 0.0
+            (min * 60_000 + (sec * 1000).toLong())
+        } else {
+            (clean.toDouble() * 1000).toLong()
+        }
+    } catch (e: Exception) {
+        fallback
+    }
 }
 
 @Composable
@@ -1356,6 +1883,17 @@ private fun AudioImportSheet(
     val haptics = rememberHapticHelper()
     val sfxManager = remember { SoundEffectsManager(context) }
     var sfxList by remember { mutableStateOf<List<SoundEffectsManager.SoundEffectItem>>(emptyList()) }
+    var auditioningFile by remember { mutableStateOf<String?>(null) }
+    val auditionPlayer = remember { android.media.MediaPlayer() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                if (auditionPlayer.isPlaying) auditionPlayer.stop()
+                auditionPlayer.release()
+            } catch (e: Exception) {}
+        }
+    }
 
     LaunchedEffect(Unit) {
         sfxList = sfxManager.getAvailableSoundEffects()
@@ -1379,7 +1917,10 @@ private fun AudioImportSheet(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onImportLocalFile() }
+                .clickable {
+                    try { if (auditionPlayer.isPlaying) auditionPlayer.stop() } catch (e: Exception) {}
+                    onImportLocalFile()
+                }
         ) {
             Row(
                 modifier = Modifier.padding(14.dp),
@@ -1395,31 +1936,73 @@ private fun AudioImportSheet(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Built-in Sound Effects", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text("Built-in Sound Effects (16-bit 44.1kHz PCM)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(8.dp))
 
         sfxList.forEach { item ->
+            val isPlaying = auditioningFile == item.localFilePath
             Card(
                 shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 3.dp)
-                    .clickable {
-                        haptics.snap()
-                        onSelectEffect(item)
-                    }
+                    .padding(vertical = 4.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(item.name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
-                        Text(item.description, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    IconButton(
+                        onClick = {
+                            haptics.tick()
+                            if (isPlaying) {
+                                try {
+                                    auditionPlayer.stop()
+                                    auditionPlayer.reset()
+                                } catch (e: Exception) {}
+                                auditioningFile = null
+                            } else {
+                                try {
+                                    auditionPlayer.reset()
+                                    auditionPlayer.setDataSource(item.localFilePath)
+                                    auditionPlayer.prepare()
+                                    auditionPlayer.start()
+                                    auditioningFile = item.localFilePath
+                                    auditionPlayer.setOnCompletionListener {
+                                        auditioningFile = null
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    auditioningFile = null
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                            contentDescription = "Audition Sound",
+                            tint = if (isPlaying) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
+                        )
                     }
-                    Text("${item.durationSec}s", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 6.dp)) {
+                        Text(item.name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        Text(item.description, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                    }
+
+                    Button(
+                        onClick = {
+                            haptics.snap()
+                            try { if (auditionPlayer.isPlaying) auditionPlayer.stop() } catch (e: Exception) {}
+                            onSelectEffect(item)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Add", fontSize = 11.sp)
+                    }
                 }
             }
         }

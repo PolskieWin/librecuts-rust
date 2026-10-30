@@ -8,7 +8,8 @@ enum class PluginCategory {
     FILTER,
     AUDIO,
     TRANSITION,
-    UTILITY
+    UTILITY,
+    UI_LAYOUT
 }
 
 @Serializable
