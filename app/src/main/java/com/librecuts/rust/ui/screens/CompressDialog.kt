@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -242,29 +243,44 @@ fun CompressDialog(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(strings.compress)
+                        Text(strings.compress, fontSize = 12.sp, maxLines = 1, softWrap = false)
                     }
                 }
                 is ExportState.Exporting -> {
-                    OutlinedButton(onClick = onCancel) {
-                        Text(strings.cancel)
+                    OutlinedButton(
+                        onClick = onCancel,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(strings.cancel, fontSize = 12.sp, maxLines = 1, softWrap = false)
                     }
                 }
                 is ExportState.Success, is ExportState.Error -> {
-                    Button(onClick = onDismiss) {
-                        Text(strings.done)
+                    Button(
+                        onClick = onDismiss,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(strings.done, fontSize = 12.sp, maxLines = 1, softWrap = false)
                     }
                 }
             }
         },
         dismissButton = {
             if (exportState is ExportState.Idle || exportState is ExportState.Cancelled) {
-                OutlinedButton(onClick = onDismiss) {
-                    Text(strings.cancel)
+                OutlinedButton(
+                    onClick = onDismiss,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(strings.cancel, fontSize = 12.sp, maxLines = 1, softWrap = false)
                 }
             }
         }
     )
 }
+

@@ -45,7 +45,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.librecuts.rust.ui.components.rememberHapticHelper
@@ -225,11 +227,12 @@ fun SettingsScreen(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(strings.openGitHub)
+                        Text(strings.openGitHub, fontSize = 12.sp, maxLines = 1, softWrap = false)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -336,3 +339,4 @@ private fun LanguageOptionRow(
         )
     }
 }
+

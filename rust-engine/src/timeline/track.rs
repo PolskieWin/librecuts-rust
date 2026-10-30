@@ -68,6 +68,11 @@ pub enum EffectConfig {
         feather: f32,
         invert: bool,
     },
+    BackgroundRemoval {
+        threshold: f32,
+        feather: f32,
+        invert: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,6 +94,10 @@ pub struct Clip {
     pub transition: Option<String>,
     #[serde(default)]
     pub transitionDurationMs: Option<u64>,
+    #[serde(default)]
+    pub animation: Option<String>,
+    #[serde(default)]
+    pub animationDurationMs: Option<u64>,
     #[serde(default)]
     pub keyframes: Vec<Keyframe>,
     #[serde(default)]

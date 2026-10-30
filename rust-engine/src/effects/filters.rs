@@ -1,13 +1,98 @@
 use rayon::prelude::*;
 
-/// Pre-built creative filters: Grayscale, Sepia, Vignette, Invert, Sharpen
+/// Pre-built creative filters: Cinematic, Cyberpunk, Vintage, Film, Noir, Vivid, Grayscale, Sepia, Vignette, Invert
 pub fn apply_filter(rgba_buffer: &mut [u8], width: u32, height: u32, filter_type: &str, intensity: f32) {
     let intensity = intensity.clamp(0.0, 1.0);
     if intensity == 0.0 {
         return;
     }
 
-    match filter_type {
+    match filter_type.to_lowercase().as_str() {
+        "cinematic" => {
+            // Teal & Orange Hollywood blockbuster aesthetic
+            rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
+                let r = pixel[0] as f32;
+                let g = pixel[1] as f32;
+                let b = pixel[2] as f32;
+
+                // Push highlights toward warm orange, shadows toward cool teal
+                let luma = 0.299 * r + 0.587 * g + 0.114 * b;
+                let target_r = if luma > 128.0 { (r * 1.15).min(255.0) } else { (r * 0.85).max(0.0) };
+                let target_g = g;
+                let target_b = if luma > 128.0 { (b * 0.85).max(0.0) } else { (b * 1.2).min(255.0) };
+
+                pixel[0] = (r * (1.0 - intensity) + target_r * intensity).clamp(0.0, 255.0) as u8;
+                pixel[1] = (g * (1.0 - intensity) + target_g * intensity).clamp(0.0, 255.0) as u8;
+                pixel[2] = (b * (1.0 - intensity) + target_b * intensity).clamp(0.0, 255.0) as u8;
+            });
+        }
+        "cyberpunk" => {
+            // Neon cyan and electric violet boost
+            rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
+                let r = pixel[0] as f32;
+                let g = pixel[1] as f32;
+                let b = pixel[2] as f32;
+
+                let cr = (r * 1.25 + 20.0).min(255.0);
+                let cg = (g * 0.9).max(0.0);
+                let cb = (b * 1.35 + 25.0).min(255.0);
+
+                pixel[0] = (r * (1.0 - intensity) + cr * intensity) as u8;
+                pixel[1] = (g * (1.0 - intensity) + cg * intensity) as u8;
+                pixel[2] = (b * (1.0 - intensity) + cb * intensity) as u8;
+            });
+        }
+        "vintage" => {
+            // Warm retro 70s faded film
+            rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
+                let r = pixel[0] as f32;
+                let g = pixel[1] as f32;
+                let b = pixel[2] as f32;
+
+                let vr = (r * 1.1 + 15.0).min(255.0);
+                let vg = (g * 1.05 + 10.0).min(255.0);
+                let vb = (b * 0.85).max(0.0);
+
+                pixel[0] = (r * (1.0 - intensity) + vr * intensity) as u8;
+                pixel[1] = (g * (1.0 - intensity) + vg * intensity) as u8;
+                pixel[2] = (b * (1.0 - intensity) + vb * intensity) as u8;
+            });
+        }
+        "vivid" => {
+            // High saturation color pop
+            rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
+                let r = pixel[0] as f32;
+                let g = pixel[1] as f32;
+                let b = pixel[2] as f32;
+                let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                let sat_factor = 1.0 + (0.5 * intensity);
+                pixel[0] = (gray + (r - gray) * sat_factor).clamp(0.0, 255.0) as u8;
+                pixel[1] = (gray + (g - gray) * sat_factor).clamp(0.0, 255.0) as u8;
+                pixel[2] = (gray + (b - gray) * sat_factor).clamp(0.0, 255.0) as u8;
+            });
+        }
+        "noir" => {
+            // High contrast black & white
+            rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
+                let r = pixel[0] as f32;
+                let g = pixel[1] as f32;
+                let b = pixel[2] as f32;
+                let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                // S-curve contrast boost
+                let normalized = gray / 255.0;
+                let contrasted = if normalized < 0.5 {
+                    2.0 * normalized * normalized
+                } else {
+                    1.0 - 2.0 * (1.0 - normalized) * (1.0 - normalized)
+                } * 255.0;
+
+                pixel[0] = (r * (1.0 - intensity) + contrasted * intensity).clamp(0.0, 255.0) as u8;
+                pixel[1] = (g * (1.0 - intensity) + contrasted * intensity).clamp(0.0, 255.0) as u8;
+                pixel[2] = (b * (1.0 - intensity) + contrasted * intensity).clamp(0.0, 255.0) as u8;
+            });
+        }
         "grayscale" => {
             rgba_buffer.par_chunks_exact_mut(4).for_each(|pixel| {
                 let r = pixel[0] as f32;
@@ -71,4 +156,3 @@ pub fn apply_filter(rgba_buffer: &mut [u8], width: u32, height: u32, filter_type
         _ => {}
     }
 }
-

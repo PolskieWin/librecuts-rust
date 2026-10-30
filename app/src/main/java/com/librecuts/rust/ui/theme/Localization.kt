@@ -71,8 +71,10 @@ data class AppStrings(
     val addClips: String,
     val addAudio: String,
     val addSubtitles: String,
+    val autoCaptions: String,
     val crop: String,
     val speed: String,
+    val animations: String,
 
     // Effects Sheet
     val clipAdjustments: String,
@@ -83,6 +85,7 @@ data class AppStrings(
     val shapeMask: String,
     val maskFeather: String,
     val maskInvert: String,
+    val backgroundRemoval: String,
     val chromaKey: String,
     val similarity: String,
     val despill: String,
@@ -110,7 +113,7 @@ data class AppStrings(
 )
 
 val EnglishStrings = AppStrings(
-    appName = "LibreCut-Rust",
+    appName = "LibreCut RS",
     back = "Back",
     save = "Save",
     cancel = "Cancel",
@@ -123,7 +126,7 @@ val EnglishStrings = AppStrings(
     close = "Close",
     error = "Error",
 
-    projectsTitle = "LibreCut Projects",
+    projectsTitle = "LibreCut RS",
     projectsSubtitle = "Offline Rust & Vulkan Video Editor",
     newProject = "New Project",
     noProjects = "No projects yet",
@@ -144,13 +147,13 @@ val EnglishStrings = AppStrings(
     themePureBlack = "Pure Black (OLED)",
     languageSection = "Language",
     languageLabel = "App Language",
-    aboutSection = "About",
-    aboutTitle = "LibreCut-Rust",
-    aboutDescription = "High-performance video editor rebuilt in Rust with Vulkan compute acceleration.",
-    madeBy = "Made by PolskieWin",
+    aboutSection = "About the Project",
+    aboutTitle = "LibreCut RS",
+    aboutDescription = "High-performance video editor rebuilt in Rust with Vulkan compute acceleration. 100% offline, privacy-first, zero internet permissions.",
+    madeBy = "Made by Tobiasz (PolskieWin)",
     builtWithAi = "Rebuilt & Designed with Antigravity AI",
     openGitHub = "View on GitHub",
-    versionLabel = "Version 2.2.0",
+    versionLabel = "v2.4.0",
 
     undo = "Undo",
     redo = "Redo",
@@ -167,8 +170,10 @@ val EnglishStrings = AppStrings(
     addClips = "Add Clips",
     addAudio = "Audio / SFX",
     addSubtitles = "Subtitles",
+    autoCaptions = "Auto Captions",
     crop = "Crop",
     speed = "Speed",
+    animations = "Animations",
 
     clipAdjustments = "Clip Adjustments",
     playbackSpeed = "Playback Speed",
@@ -178,6 +183,7 @@ val EnglishStrings = AppStrings(
     shapeMask = "Shape Mask",
     maskFeather = "Edge Feather",
     maskInvert = "Invert Mask",
+    backgroundRemoval = "Cutout / BG Removal",
     chromaKey = "Chroma Key",
     similarity = "Similarity",
     despill = "Despill Suppressor",
@@ -204,7 +210,7 @@ val EnglishStrings = AppStrings(
 )
 
 val SpanishStrings = AppStrings(
-    appName = "LibreCut-Rust",
+    appName = "LibreCut RS",
     back = "Atrás",
     save = "Guardar",
     cancel = "Cancelar",
@@ -217,7 +223,7 @@ val SpanishStrings = AppStrings(
     close = "Cerrar",
     error = "Error",
 
-    projectsTitle = "Proyectos LibreCut",
+    projectsTitle = "LibreCut RS",
     projectsSubtitle = "Editor de vídeo Rust & Vulkan sin conexión",
     newProject = "Nuevo proyecto",
     noProjects = "Aún no hay proyectos",
@@ -238,13 +244,13 @@ val SpanishStrings = AppStrings(
     themePureBlack = "Negro puro (OLED)",
     languageSection = "Idioma",
     languageLabel = "Idioma de la aplicación",
-    aboutSection = "Acerca de",
-    aboutTitle = "LibreCut-Rust",
-    aboutDescription = "Editor de vídeo de alto rendimiento reconstruido en Rust con aceleración Vulkan.",
-    madeBy = "Hecho por PolskieWin",
+    aboutSection = "Acerca del proyecto",
+    aboutTitle = "LibreCut RS",
+    aboutDescription = "Editor de vídeo de alto rendimiento reconstruido en Rust con aceleración Vulkan. 100% offline, privacidad garantizada.",
+    madeBy = "Hecho por Tobiasz (PolskieWin)",
     builtWithAi = "Reconstruido y diseñado con Antigravity AI",
     openGitHub = "Ver en GitHub",
-    versionLabel = "Versión 2.2.0",
+    versionLabel = "v2.4.0",
 
     undo = "Deshacer",
     redo = "Rehacer",
@@ -261,8 +267,10 @@ val SpanishStrings = AppStrings(
     addClips = "Añadir clips",
     addAudio = "Audio / SFX",
     addSubtitles = "Subtítulos",
+    autoCaptions = "Subtítulos automáticos",
     crop = "Recortar",
     speed = "Velocidad",
+    animations = "Animaciones",
 
     clipAdjustments = "Ajustes del clip",
     playbackSpeed = "Velocidad de reproducción",
@@ -272,6 +280,7 @@ val SpanishStrings = AppStrings(
     shapeMask = "Máscara de forma",
     maskFeather = "Suavizado de borde",
     maskInvert = "Invertir máscara",
+    backgroundRemoval = "Recorte / Sin fondo",
     chromaKey = "Clave croma",
     similarity = "Similitud",
     despill = "Supresor de derrame",
@@ -298,7 +307,7 @@ val SpanishStrings = AppStrings(
 )
 
 val PolishStrings = AppStrings(
-    appName = "LibreCut-Rust",
+    appName = "LibreCut RS",
     back = "Wstecz",
     save = "Zapisz",
     cancel = "Anuluj",
@@ -311,7 +320,7 @@ val PolishStrings = AppStrings(
     close = "Zamknij",
     error = "Błąd",
 
-    projectsTitle = "Projekty LibreCut",
+    projectsTitle = "LibreCut RS",
     projectsSubtitle = "Edytor wideo offline w Rust i Vulkan",
     newProject = "Nowy projekt",
     noProjects = "Brak projektów",
@@ -333,12 +342,12 @@ val PolishStrings = AppStrings(
     languageSection = "Język",
     languageLabel = "Język aplikacji",
     aboutSection = "O programie",
-    aboutTitle = "LibreCut-Rust",
-    aboutDescription = "Wydajny edytor wideo przepisany w języku Rust z akceleracją obliczeniową Vulkan.",
-    madeBy = "Stworzone przez PolskieWin",
+    aboutTitle = "LibreCut RS",
+    aboutDescription = "Wydajny edytor wideo przepisany w języku Rust z akceleracją obliczeniową Vulkan. 100% offline, brak uprawnień internetowych.",
+    madeBy = "Stworzone przez Tobiasza (PolskieWin)",
     builtWithAi = "Przebudowane i zaprojektowane z Antigravity AI",
     openGitHub = "Zobacz na GitHubie",
-    versionLabel = "Wersja 2.2.0",
+    versionLabel = "v2.4.0",
 
     undo = "Cofnij",
     redo = "Ponów",
@@ -348,17 +357,19 @@ val PolishStrings = AppStrings(
     keyframe = "Klatka kluczowa",
     voiceover = "Dyktafon / Lektor",
     recordingVoiceover = "Nagrywanie lektora",
-    effects = "Efekty",
+    effects = "Efecty",
     plugins = "Wtyczki",
     transitions = "Przejścia",
-    compress = "Kompresuj",
+    compress = "Kompresja",
     addClips = "Dodaj klipy",
-    addAudio = "Dźwięk / Muzyka",
+    addAudio = "Audio / SFX",
     addSubtitles = "Napisy",
-    crop = "Kadruj",
+    autoCaptions = "Automatyczne napisy",
+    crop = "Kadrowanie",
     speed = "Prędkość",
+    animations = "Animacje",
 
-    clipAdjustments = "Dopasowania klipu",
+    clipAdjustments = "Dostosowanie klipu",
     playbackSpeed = "Prędkość odtwarzania",
     speedNormal = "Normalna",
     speedCurve = "Krzywa prędkości",
@@ -366,38 +377,40 @@ val PolishStrings = AppStrings(
     shapeMask = "Maska kształtu",
     maskFeather = "Zmiękczenie krawędzi",
     maskInvert = "Odwróć maskę",
-    chromaKey = "Chroma Key (Zielone tło)",
-    similarity = "Czułość",
+    backgroundRemoval = "Usuwanie tła / Wycinanie",
+    chromaKey = "Chroma Key (Zielony ekran)",
+    similarity = "Podobieństwo",
     despill = "Tłumienie poświaty",
-    filters = "Filtry kolorystyczne",
+    filters = "Filtry kreatywne",
     colorGrading = "Korekcja kolorów",
     brightness = "Jasność",
     contrast = "Kontrast",
     saturation = "Nasycenie",
-    textOverlay = "Tekst / Napisy",
+    textOverlay = "Napisy / Tekst",
     fontLabel = "Czcionka",
     importFont = "Importuj własną czcionkę (.ttf/.otf)",
 
     exportVideo = "Eksportuj wideo",
     compressVideo = "Kompresuj wideo",
     resolution = "Rozdzielczość",
-    frameRate = "Klatki na sekundę",
-    bitrate = "Przepływność",
+    frameRate = "Klatki na sekundę (FPS)",
+    bitrate = "Przepływność (Bitrate)",
     estimatedSize = "Szacowany rozmiar",
     smartRender = "Smart Render (Bezstratne cięcie)",
-    exportSuccess = "Eksport zakończony powodzeniem",
+    exportSuccess = "Eksport zakończony pomyślnie",
     compressionPresetDiscord = "Mały (Discord / WhatsApp)",
-    compressionPresetWeb = "Średni (Web / Społecznościowe)",
+    compressionPresetWeb = "Średni (Sieć / Media)",
     compressionPresetHigh = "Wysoka jakość"
 )
 
-fun getAppStrings(language: AppLanguage): AppStrings {
+val LocalAppStrings = compositionLocalOf { EnglishStrings }
+val LocalAppLanguage = compositionLocalOf { AppLanguage.ENGLISH }
+
+@Composable
+fun getStringsForLanguage(language: AppLanguage): AppStrings {
     return when (language) {
         AppLanguage.ENGLISH -> EnglishStrings
         AppLanguage.SPANISH -> SpanishStrings
         AppLanguage.POLISH -> PolishStrings
     }
 }
-
-val LocalAppStrings = compositionLocalOf { EnglishStrings }
-val LocalAppLanguage = compositionLocalOf { AppLanguage.ENGLISH }

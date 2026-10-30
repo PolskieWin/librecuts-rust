@@ -1,4 +1,4 @@
-name: Build LibreCut Rust (Android 14+)
+name: Build LibreCut RS (Android 14+)
 
 on:
   push:

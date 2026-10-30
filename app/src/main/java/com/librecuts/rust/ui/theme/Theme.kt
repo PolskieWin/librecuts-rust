@@ -21,33 +21,35 @@ enum class AppThemeMode {
     MATERIAL_YOU_AUTO, // Adapts to system Light/Dark with Material You dynamic color
     LIGHT,
     DARK,
-    PURE_BLACK // True OLED 0 IRE Black (#000000) with Material You accents
+    PURE_BLACK // True OLED 0 IRE Black (#000000) with Electric Blue accents
 }
 
 val LocalThemeMode = compositionLocalOf { AppThemeMode.PURE_BLACK }
 
+// Crisp Electric Blue Light Color Scheme
 private val FallbackLightColorScheme = lightColorScheme(
-    primary = Color(0xFF6750A4),
-    secondary = Color(0xFF625B71),
-    tertiary = Color(0xFF7D5260),
-    background = Color(0xFFFEF7FF),
-    surface = Color(0xFFFEF7FF),
-    surfaceVariant = Color(0xFFE7E0EC),
+    primary = Color(0xFF1565C0),
+    secondary = Color(0xFF0091EA),
+    tertiary = Color(0xFF00B0FF),
+    background = Color(0xFFF8FAFC),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFE2E8F0),
     onPrimary = Color.White,
-    onBackground = Color(0xFF1D1B20),
-    onSurface = Color(0xFF1D1B20)
+    onBackground = Color(0xFF0F172A),
+    onSurface = Color(0xFF0F172A)
 )
 
+// Electric Blue Dark Color Scheme
 private val FallbackDarkColorScheme = darkColorScheme(
-    primary = Color(0xFFD0BCFF),
-    secondary = Color(0xFFCCC2DC),
-    tertiary = Color(0xFFEFB8C8),
-    background = Color(0xFF141218),
-    surface = Color(0xFF141218),
-    surfaceVariant = Color(0xFF49454F),
-    onPrimary = Color(0xFF381E72),
-    onBackground = Color(0xFFE6E0E9),
-    onSurface = Color(0xFFE6E0E9)
+    primary = Color(0xFF2979FF),
+    secondary = Color(0xFF00B0FF),
+    tertiary = Color(0xFF82B1FF),
+    background = Color(0xFF0A0E17),
+    surface = Color(0xFF111827),
+    surfaceVariant = Color(0xFF1F2937),
+    onPrimary = Color.White,
+    onBackground = Color(0xFFF3F4F6),
+    onSurface = Color(0xFFF3F4F6)
 )
 
 @Composable
@@ -69,12 +71,14 @@ fun LibreCutRustTheme(
             if (supportsDynamic) dynamicDarkColorScheme(context) else FallbackDarkColorScheme
         }
         AppThemeMode.PURE_BLACK -> {
-            // Material You accents over pure OLED black background
+            // Material You accents over pure OLED 0 IRE black background
             val base = if (supportsDynamic) dynamicDarkColorScheme(context) else FallbackDarkColorScheme
             base.copy(
+                primary = Color(0xFF2979FF),
+                secondary = Color(0xFF00B0FF),
                 background = Color(0xFF000000),
-                surface = Color(0xFF070707),
-                surfaceVariant = Color(0xFF141414),
+                surface = Color(0xFF080B10),
+                surfaceVariant = Color(0xFF121824),
                 onBackground = Color(0xFFFFFFFF),
                 onSurface = Color(0xFFFFFFFF)
             )

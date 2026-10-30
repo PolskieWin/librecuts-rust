@@ -2,37 +2,39 @@ Categories:
   - Multimedia
   - Video
 License: MIT
-AuthorName: LibreCut RS Team
-SourceCode: https://github.com/your-username/librecuts-rust
-IssueTracker: https://github.com/your-username/librecuts-rust/issues
+AuthorName: Tobiasz (PolskieWin)
+SourceCode: https://github.com/PolskieWin/librecuts-rust
+IssueTracker: https://github.com/PolskieWin/librecuts-rust/issues
 
-AutoName: LibreCut Rust
-Summary: Fast, privacy-first open source video editor for Android 14+ powered by Rust
+AutoName: LibreCut RS
+Summary: Fast, privacy-first open source video editor for Android 14+ powered by Rust & Vulkan
 Description: |-
-  LibreCut Rust is a high-performance, 100% offline rebuild and fork of LibreCuts.
+  LibreCut RS is a high-performance, 100% offline rebuild and fork of LibreCuts.
   The video engine is completely rewritten in native Rust utilizing direct Android NDK
-  AMediaCodec hardware acceleration, SIMD-parallel frame processing, and Smart Render lossless
-  stream copying.
+  AMediaCodec hardware acceleration, Vulkan GPU compute, SIMD-parallel frame processing,
+  and Smart Render lossless stream copying.
 
   Key Features:
   - 100% Offline (No Internet permission requested or used)
-  - Zero bloated ffmpeg-kit binaries: APK size reduced from ~90MB to ~14MB
+  - Zero bloated ffmpeg-kit binaries: APK size reduced to ~4.3MB
   - 16KB ELF page size compliant (Ready for Android 15 & Pixel 9+)
+  - Auto Speech to Subtitles (CapCut style automatic captions)
+  - Pre-made In, Out, and Combo animations
+  - Automatic background removal without green screen
   - Smart Render: Lossless instantaneous cut/trim without re-encoding
-  - SIMD Chroma Key (Green Screen) with despill suppressor
+  - 4GB memory buffer ceiling for heavy 4K editing
   - Multi-track timeline (Video, Audio, Overlay, Text)
   - 200% Audio Volume Booster with soft-knee limiter clipping protection
 
 RepoType: git
-Repo: https://github.com/your-username/librecuts-rust.git
+Repo: https://github.com/PolskieWin/librecuts-rust.git
 
 Builds:
-  - versionName: 2.0.0-rust
-    versionCode: 20000
-    commit: v2.0.0
+  - versionName: 2.4.0-rs
+    versionCode: 20400
+    commit: v2.4.0
     subdir: app
     gradle:
       - yes
     prebuild:
       - cd ../rust-engine && cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../app/src/main/jniLibs build --release
-

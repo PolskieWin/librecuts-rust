@@ -5,8 +5,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,18 +21,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.CropSquare
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FontDownload
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.LinearScale
-import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.MovieFilter
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Transform
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,15 +38,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,8 +60,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.librecuts.rust.engine.AnimationType
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.EffectConfig
 import com.librecuts.rust.engine.FontManager
@@ -80,7 +81,8 @@ fun EffectsSheet(
         speed: Float,
         speedCurve: SpeedCurveType,
         volume: Float,
-        transition: TransitionType
+        transition: TransitionType,
+        animation: AnimationType
     ) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -91,13 +93,21 @@ fun EffectsSheet(
     val fontManager = remember { FontManager(context) }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Adjust", "Speed & Curve", "Transitions", "Crop", "Mask", "Text & Fonts")
+    val tabTitles = listOf("Adjust", "Animations", "Transitions", "Speed & Curve", "Crop", "Mask", "Text & Fonts")
 
     // Playback Speed & Speed Curve
     var speed by remember(clip.id) { mutableFloatStateOf(clip.speed) }
     var speedCurve by remember(clip.id) { mutableStateOf(clip.speedCurve) }
     var volume by remember(clip.id) { mutableFloatStateOf(clip.volume) }
     var transition by remember(clip.id) { mutableStateOf(clip.transition) }
+    var animation by remember(clip.id) { mutableStateOf(clip.animation) }
+
+    // Background Removal (Auto Cutout without Green Screen)
+    val existingBgRemoval = clip.effects.find { it is EffectConfig.BackgroundRemoval } as? EffectConfig.BackgroundRemoval
+    var bgRemovalEnabled by remember(clip.id) { mutableStateOf(existingBgRemoval != null) }
+    var bgRemovalThreshold by remember(clip.id) { mutableFloatStateOf(existingBgRemoval?.threshold ?: 0.45f) }
+    var bgRemovalFeather by remember(clip.id) { mutableFloatStateOf(existingBgRemoval?.feather ?: 0.08f) }
+    var bgRemovalInvert by remember(clip.id) { mutableStateOf(existingBgRemoval?.invert ?: false) }
 
     // Chroma key states
     var chromaEnabled by remember(clip.id) {
@@ -160,6 +170,15 @@ fun EffectsSheet(
 
     fun syncAll() {
         val newEffects = mutableListOf<EffectConfig>()
+        if (bgRemovalEnabled) {
+            newEffects.add(
+                EffectConfig.BackgroundRemoval(
+                    threshold = bgRemovalThreshold,
+                    feather = bgRemovalFeather,
+                    invert = bgRemovalInvert
+                )
+            )
+        }
         if (chromaEnabled) {
             newEffects.add(EffectConfig.ChromaKey(similarity = similarity, despill = despill))
         }
@@ -203,7 +222,7 @@ fun EffectsSheet(
                 )
             )
         }
-        onUpdateClip(newEffects, speed, speedCurve, volume, transition)
+        onUpdateClip(newEffects, speed, speedCurve, volume, transition, animation)
     }
 
     Column(
@@ -221,11 +240,12 @@ fun EffectsSheet(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Navigation Tabs for organized editing
-        TabRow(
+        // Organized Scrollable Tab Row
+        ScrollableTabRow(
             selectedTabIndex = selectedTab,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-            contentColor = MaterialTheme.colorScheme.primary
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+            contentColor = MaterialTheme.colorScheme.primary,
+            edgePadding = 8.dp
         ) {
             tabTitles.forEachIndexed { index, title ->
                 Tab(
@@ -234,7 +254,7 @@ fun EffectsSheet(
                         haptics.tick()
                         selectedTab = index
                     },
-                    text = { Text(title, fontSize = 11.sp, maxLines = 1) }
+                    text = { Text(title, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                 )
             }
         }
@@ -242,7 +262,7 @@ fun EffectsSheet(
         Spacer(modifier = Modifier.height(16.dp))
 
         when (selectedTab) {
-            // TAB 0: Adjust (Audio Boost, Chroma Key, Color Grading, Filters)
+            // TAB 0: Adjust (Audio Boost, Cutout/BG Removal, Chroma Key, Color Grading, Creative Filters)
             0 -> {
                 // Audio Volume Booster
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -256,6 +276,30 @@ fun EffectsSheet(
                     valueRange = 0.0f..2.0f,
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                 )
+
+                Divider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 10.dp))
+
+                // Background Removal (Auto Cutout without green screen)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(strings.backgroundRemoval, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                        Text("Auto cutout subject without green screen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(checked = bgRemovalEnabled, onCheckedChange = { haptics.tick(); bgRemovalEnabled = it; syncAll() })
+                }
+                if (bgRemovalEnabled) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Cutout Sensitivity: ${(bgRemovalThreshold * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Slider(value = bgRemovalThreshold, onValueChange = { bgRemovalThreshold = it; syncAll() }, valueRange = 0.1f..0.9f)
+
+                    Text("Edge Feather: ${(bgRemovalFeather * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Slider(value = bgRemovalFeather, onValueChange = { bgRemovalFeather = it; syncAll() }, valueRange = 0.01f..0.25f)
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Invert Cutout", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Switch(checked = bgRemovalInvert, onCheckedChange = { bgRemovalInvert = it; syncAll() })
+                    }
+                }
 
                 Divider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 10.dp))
 
@@ -280,12 +324,39 @@ fun EffectsSheet(
                 // Creative Filters
                 Text(strings.filters, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("none" to "Normal", "grayscale" to "B&W", "sepia" to "Sepia", "vignette" to "Vignette").forEach { (type, label) ->
+                val filterList = listOf(
+                    "none" to "Normal",
+                    "cinematic" to "Cinematic",
+                    "cyberpunk" to "Cyberpunk",
+                    "vintage" to "Vintage",
+                    "vivid" to "Vivid",
+                    "noir" to "Noir B&W",
+                    "grayscale" to "Grayscale",
+                    "sepia" to "Sepia",
+                    "vignette" to "Vignette"
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    filterList.take(4).forEach { (type, label) ->
                         FilterChip(
                             selected = activeFilter == type,
                             onClick = { haptics.tick(); activeFilter = type; syncAll() },
-                            label = { Text(label, fontSize = 12.sp) }
+                            label = { Text(label, fontSize = 11.sp, maxLines = 1, softWrap = false) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    filterList.drop(4).forEach { (type, label) ->
+                        FilterChip(
+                            selected = activeFilter == type,
+                            onClick = { haptics.tick(); activeFilter = type; syncAll() },
+                            label = { Text(label, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                         )
                     }
                 }
@@ -305,8 +376,127 @@ fun EffectsSheet(
                 Slider(value = saturation, onValueChange = { saturation = it; syncAll() }, valueRange = 0.0f..2.0f)
             }
 
-            // TAB 1: Speed & Speed Curves
+            // TAB 1: Animations (In, Out, Combo - CapCut style)
             1 -> {
+                Text(strings.animations, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Select In, Out, or Combo animation to give movement to clips", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                listOf("In", "Out", "Combo").forEach { cat ->
+                    Text(
+                        text = "$cat Animations",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    val catAnims = AnimationType.values().filter { it.category == cat }
+                    catAnims.forEach { anim ->
+                        Card(
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (animation == anim) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(anim.label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                Button(
+                                    onClick = {
+                                        haptics.snap()
+                                        animation = if (animation == anim) AnimationType.None else anim
+                                        syncAll()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (animation == anim) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = if (animation == anim) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = if (animation == anim) "Active" else "Select",
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+
+            // TAB 2: Pre-made Transitions
+            2 -> {
+                Text(strings.transitions, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Select an outgoing transition effect for this clip boundary", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                TransitionType.values().forEach { trans ->
+                    Card(
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (transition == trans) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Animation, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(trans.displayName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            Button(
+                                onClick = {
+                                    haptics.snap()
+                                    transition = trans
+                                    syncAll()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (transition == trans) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (transition == trans) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (transition == trans) "Active" else "Select",
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // TAB 3: Speed & Speed Curves
+            3 -> {
                 Text(strings.playbackSpeed, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -335,7 +525,7 @@ fun EffectsSheet(
 
                 SpeedCurveType.values().forEach { curve ->
                     Card(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (speedCurve == curve) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ),
@@ -344,7 +534,9 @@ fun EffectsSheet(
                             .padding(vertical = 3.dp)
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -369,68 +561,28 @@ fun EffectsSheet(
                                     containerColor = if (speedCurve == curve) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = if (speedCurve == curve) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                 ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text(if (speedCurve == curve) "Active" else "Apply", fontSize = 12.sp)
+                                Text(
+                                    text = if (speedCurve == curve) "Active" else "Apply",
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // TAB 2: Transitions
-            2 -> {
-                Text(strings.transitions, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Select an outgoing transition effect for this clip boundary", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                TransitionType.values().forEach { trans ->
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (transition == trans) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Animation, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(trans.name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
-                            }
-                            Button(
-                                onClick = {
-                                    haptics.snap()
-                                    transition = trans
-                                    syncAll()
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (transition == trans) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (transition == trans) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(if (transition == trans) "Active" else "Select", fontSize = 12.sp)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // TAB 3: Crop & Transform
-            3 -> {
+            // TAB 4: Crop & Transform
+            4 -> {
                 Text(strings.crop, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Aspect Presets
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("Freeform", "16:9", "9:16", "1:1", "4:5").forEach { preset ->
                         FilterChip(
                             selected = false,
@@ -445,7 +597,7 @@ fun EffectsSheet(
                                 }
                                 syncAll()
                             },
-                            label = { Text(preset, fontSize = 12.sp) }
+                            label = { Text(preset, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                         )
                     }
                 }
@@ -475,8 +627,8 @@ fun EffectsSheet(
                 }
             }
 
-            // TAB 4: Mask (Shape Masking)
-            4 -> {
+            // TAB 5: Mask (Shape Masking)
+            5 -> {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.shapeMask, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
@@ -487,7 +639,7 @@ fun EffectsSheet(
 
                 if (maskEnabled) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(
                             Triple("circle", "Circle", Icons.Default.RadioButtonUnchecked),
                             Triple("rectangle", "Rectangle", Icons.Default.CropSquare),
@@ -498,7 +650,7 @@ fun EffectsSheet(
                                 selected = maskShape == shapeKey,
                                 onClick = { haptics.tick(); maskShape = shapeKey; syncAll() },
                                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                                label = { Text(label, fontSize = 12.sp) }
+                                label = { Text(label, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                             )
                         }
                     }
@@ -517,8 +669,8 @@ fun EffectsSheet(
                 }
             }
 
-            // TAB 5: Text & Custom Font Import
-            5 -> {
+            // TAB 6: Text & Custom Font Import
+            6 -> {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(strings.textOverlay, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
@@ -557,11 +709,12 @@ fun EffectsSheet(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Import Font", fontSize = 11.sp)
+                            Text("Import Font", fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
 
@@ -577,7 +730,7 @@ fun EffectsSheet(
                                     selectedFontPath = fontOpt.path
                                     syncAll()
                                 },
-                                label = { Text(fontOpt.name, fontSize = 12.sp) }
+                                label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                             )
                         }
                     }

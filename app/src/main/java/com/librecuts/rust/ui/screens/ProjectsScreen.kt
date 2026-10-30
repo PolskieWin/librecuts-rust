@@ -72,8 +72,8 @@ import com.librecuts.rust.engine.ProjectRepository
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
 import com.librecuts.rust.ui.components.rememberHapticHelper
-import com.librecuts.rust.ui.theme.AccentAmber
-import com.librecuts.rust.ui.theme.AccentOrange
+import com.librecuts.rust.ui.theme.AccentBlue
+import com.librecuts.rust.ui.theme.AccentSkyBlue
 import com.librecuts.rust.ui.theme.AppThemeMode
 import com.librecuts.rust.ui.theme.LocalAppStrings
 import kotlinx.coroutines.launch
@@ -170,21 +170,30 @@ fun ProjectsScreen(
                     )
 
                     Surface(
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(18.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier
-                            .size(38.dp)
                             .clickable {
                                 haptics.tick()
                                 onOpenSettings()
                             }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = strings.settings,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = strings.settings,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -218,7 +227,7 @@ fun ProjectsScreen(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                listOf(AccentAmber, AccentOrange)
+                                listOf(AccentBlue, AccentSkyBlue)
                             )
                         )
                         .padding(horizontal = 20.dp),

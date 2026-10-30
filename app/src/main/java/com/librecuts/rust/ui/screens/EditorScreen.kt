@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Button
@@ -76,7 +77,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.librecuts.rust.engine.AnimationType
 import com.librecuts.rust.engine.AudioRecorderHelper
+import com.librecuts.rust.engine.AutoCaptionHelper
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.EffectConfig
@@ -116,6 +119,7 @@ fun EditorScreen(
     val fontManager = remember { FontManager(context) }
     val pluginManager = remember { PluginManager(context) }
     val audioRecorder = remember { AudioRecorderHelper(context) }
+    val autoCaptionHelper = remember { AutoCaptionHelper(context) }
     val exportManager = remember { ExportManager(context) }
     val exportState by exportManager.exportState.collectAsState()
 
@@ -127,6 +131,7 @@ fun EditorScreen(
     var showEffectsSheet by remember { mutableStateOf(false) }
     var showPluginManagerSheet by remember { mutableStateOf(false) }
     var showAudioSheet by remember { mutableStateOf(false) }
+    var showSubtitleSheet by remember { mutableStateOf(false) }
 
     var isRecordingVoiceover by remember { mutableStateOf(false) }
     var recordElapsedSeconds by remember { mutableLongStateOf(0L) }
@@ -266,6 +271,14 @@ fun EditorScreen(
         }
     }
 
+    // Auto-save project every 2 minutes for heavy editing security
+    LaunchedEffect(composition) {
+        while (true) {
+            delay(120_000L)
+            onSaveProject(project.copy(composition = composition))
+        }
+    }
+
     val selectedClip = composition.tracks
         .flatMap { it.clips }
         .find { it.id == selectedClipId }
@@ -393,13 +406,13 @@ fun EditorScreen(
                         }
                     )
 
-                    // 3. Subtitles
+                    // 3. Subtitles & Auto Captions
                     BottomToolbarItem(
                         icon = Icons.Default.Subtitles,
                         label = strings.addSubtitles,
                         onClick = {
                             haptics.tick()
-                            srtPickerLauncher.launch("*/*")
+                            showSubtitleSheet = true
                         }
                     )
 
@@ -707,7 +720,7 @@ fun EditorScreen(
         }
     }
 
-    // Effects & Text Bottom Sheet (Includes Speed Curves, Transitions, Crop, Masks, Custom Fonts)
+    // Effects & Animations Bottom Sheet (Includes Speed Curves, Transitions, Crop, Masks, Custom Fonts)
     if (showEffectsSheet && selectedClip != null) {
         ModalBottomSheet(
             onDismissRequest = { showEffectsSheet = false },
@@ -716,7 +729,7 @@ fun EditorScreen(
         ) {
             EffectsSheet(
                 clip = selectedClip,
-                onUpdateClip = { newEffects, newSpeed, newSpeedCurve, newVolume, newTransition ->
+                onUpdateClip = { newEffects, newSpeed, newSpeedCurve, newVolume, newTransition, newAnimation ->
                     val updatedTracks = composition.tracks.map { track ->
                         track.copy(clips = track.clips.map {
                             if (it.id == selectedClip.id) {
@@ -725,12 +738,73 @@ fun EditorScreen(
                                     speed = newSpeed,
                                     speedCurve = newSpeedCurve,
                                     volume = newVolume,
-                                    transition = newTransition
+                                    transition = newTransition,
+                                    animation = newAnimation
                                 )
                             } else it
                         })
                     }
                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                }
+            )
+        }
+    }
+
+    // Subtitles & Auto Captions Bottom Sheet (CapCut style automatic speech-to-subtitles)
+    if (showSubtitleSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSubtitleSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            SubtitleImportSheet(
+                onAutoCaptions = {
+                    showSubtitleSheet = false
+                    scope.launch {
+                        val generatedClips = autoCaptionHelper.generateCaptionsForComposition(composition)
+                        if (generatedClips.isNotEmpty()) {
+                            val updatedTracks = composition.tracks.map { track ->
+                                if (track.track_type == TrackType.Text) {
+                                    track.copy(clips = track.clips + generatedClips)
+                                } else track
+                            }
+                            updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                            haptics.split()
+                            Toast.makeText(context, "Generated ${generatedClips.size} auto-captions!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "No spoken audio found to transcribe", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onImportSrt = {
+                    showSubtitleSheet = false
+                    srtPickerLauncher.launch("*/*")
+                },
+                onAddBlankText = {
+                    showSubtitleSheet = false
+                    val textClip = Clip(
+                        id = UUID.randomUUID().toString(),
+                        file_path = "text://${UUID.randomUUID()}",
+                        source_start_ms = 0L,
+                        source_end_ms = 3000L,
+                        timeline_start_ms = currentPositionMs,
+                        effects = listOf(
+                            EffectConfig.TextOverlay(
+                                text = "LibreCut RS",
+                                font_size = 24f,
+                                x = 0.5f,
+                                y = 0.8f
+                            )
+                        )
+                    )
+                    val updatedTracks = composition.tracks.map { track ->
+                        if (track.track_type == TrackType.Text) {
+                            track.copy(clips = track.clips + textClip)
+                        } else track
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    haptics.snap()
+                    Toast.makeText(context, "Text clip added!", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -926,6 +1000,110 @@ private fun AudioImportSheet(
                         Text(desc, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                     Text("${duration}s", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubtitleImportSheet(
+    onAutoCaptions: () -> Unit,
+    onImportSrt: () -> Unit,
+    onAddBlankText: () -> Unit
+) {
+    val haptics = rememberHapticHelper()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Subtitles & Auto Captions",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Generate on-device captions or import external subtitle files",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Option 1: Auto Captions (CapCut Style)
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.snap()
+                    onAutoCaptions()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Auto Captions (Speech to Subtitles)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Detect speech intervals & automatically generate synced text overlays", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Option 2: Import .SRT
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.tick()
+                    onImportSrt()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Subtitles, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Import .SRT Subtitle File", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Parse external timestamped subtitles from storage", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Option 3: Manual Text
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.tick()
+                    onAddBlankText()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.TextFields, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Add Blank Title / Text Clip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Insert a customizable text overlay at current playhead", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.librecuts.rust.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -260,8 +261,12 @@ fun ExportDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            OutlinedButton(onClick = onDismiss) {
-                                Text(strings.cancel)
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(strings.cancel, fontSize = 12.sp, maxLines = 1, softWrap = false)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
@@ -273,9 +278,11 @@ fun ExportDialog(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
+                                ),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text(strings.export)
+                                Text(strings.export, fontSize = 12.sp, maxLines = 1, softWrap = false)
                             }
                         }
                     }

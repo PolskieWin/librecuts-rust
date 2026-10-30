@@ -12,14 +12,44 @@ enum class TrackType {
 }
 
 @Serializable
-enum class TransitionType {
-    @SerialName("None") None,
-    @SerialName("CrossDissolve") CrossDissolve,
-    @SerialName("FadeToBlack") FadeToBlack,
-    @SerialName("DipToWhite") DipToWhite,
-    @SerialName("SlideLeft") SlideLeft,
-    @SerialName("SlideRight") SlideRight,
-    @SerialName("ZoomBlur") ZoomBlur
+enum class TransitionType(val displayName: String) {
+    @SerialName("None") None("None"),
+    @SerialName("CrossDissolve") CrossDissolve("Cross Dissolve"),
+    @SerialName("FadeToBlack") FadeToBlack("Dip to Black"),
+    @SerialName("DipToWhite") DipToWhite("Dip to White"),
+    @SerialName("SlideLeft") SlideLeft("Slide Left"),
+    @SerialName("SlideRight") SlideRight("Slide Right"),
+    @SerialName("ZoomBlur") ZoomBlur("Zoom Blur"),
+    @SerialName("WipeLeft") WipeLeft("Wipe Left"),
+    @SerialName("FlashWhite") FlashWhite("Flash Cut")
+}
+
+@Serializable
+enum class AnimationType(val label: String, val category: String) {
+    @SerialName("None") None("None", "None"),
+
+    // IN Animations
+    @SerialName("FadeIn") FadeIn("Fade In", "In"),
+    @SerialName("ZoomIn") ZoomIn("Zoom In", "In"),
+    @SerialName("SlideInLeft") SlideInLeft("Slide In Left", "In"),
+    @SerialName("SlideInRight") SlideInRight("Slide In Right", "In"),
+    @SerialName("BounceIn") BounceIn("Bounce In", "In"),
+    @SerialName("SpinIn") SpinIn("Spin In", "In"),
+
+    // OUT Animations
+    @SerialName("FadeOut") FadeOut("Fade Out", "Out"),
+    @SerialName("ZoomOut") ZoomOut("Zoom Out", "Out"),
+    @SerialName("SlideOutLeft") SlideOutLeft("Slide Out Left", "Out"),
+    @SerialName("SlideOutRight") SlideOutRight("Slide Out Right", "Out"),
+    @SerialName("SpinOut") SpinOut("Spin Out", "Out"),
+
+    // COMBO Animations
+    @SerialName("Shake") Shake("Dynamic Shake", "Combo"),
+    @SerialName("Glitch") Glitch("RGB Glitch", "Combo"),
+    @SerialName("Pendulum") Pendulum("Pendulum Swing", "Combo"),
+    @SerialName("Flash") Flash("Strobe Flash", "Combo"),
+    @SerialName("Pulse") Pulse("Heartbeat Pulse", "Combo"),
+    @SerialName("Swing") Swing("Gentle Swing", "Combo")
 }
 
 @Serializable
@@ -55,6 +85,14 @@ sealed class EffectConfig {
     ) : EffectConfig()
 
     @Serializable
+    @SerialName("BackgroundRemoval")
+    data class BackgroundRemoval(
+        val threshold: Float = 0.45f,
+        val feather: Float = 0.08f,
+        val invert: Boolean = false
+    ) : EffectConfig()
+
+    @Serializable
     @SerialName("ColorGrading")
     data class ColorGrading(
         val brightness: Float = 0f,
@@ -86,7 +124,7 @@ sealed class EffectConfig {
     @Serializable
     @SerialName("TextOverlay")
     data class TextOverlay(
-        val text: String = "LibreCut",
+        val text: String = "LibreCut RS",
         val font_size: Float = 24f,
         val x: Float = 0.5f,
         val y: Float = 0.8f,
@@ -120,6 +158,8 @@ data class Clip(
     val muted: Boolean = false,
     val transition: TransitionType = TransitionType.None,
     val transitionDurationMs: Long = 500L,
+    val animation: AnimationType = AnimationType.None,
+    val animationDurationMs: Long = 600L,
     val keyframes: List<Keyframe> = emptyList(),
     val effects: List<EffectConfig> = emptyList()
 ) {
@@ -166,6 +206,9 @@ data class ExportConfig(
     val smart_render: Boolean = true
 ) {
     companion object {
+        // 4GB Memory Ceiling for Heavy Editing (4K 60fps compositions)
+        const val MAX_EDITING_BUFFER_BYTES = 4096L * 1024L * 1024L
+
         fun estimateFileSizeBytes(durationMs: Long, videoBitrateBps: Int, audioBitrateBps: Int): Long {
             val totalBps = (videoBitrateBps + audioBitrateBps).toLong()
             val durationSec = durationMs.toDouble() / 1000.0

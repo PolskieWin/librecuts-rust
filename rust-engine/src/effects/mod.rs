@@ -87,6 +87,20 @@ pub fn apply_effect_chain(rgba_buffer: &mut [u8], width: u32, height: u32, effec
                     *invert,
                 );
             }
+            EffectConfig::BackgroundRemoval {
+                threshold,
+                feather,
+                invert,
+            } => {
+                mask::apply_background_removal(
+                    rgba_buffer,
+                    width,
+                    height,
+                    *threshold,
+                    *feather,
+                    *invert,
+                );
+            }
         }
     }
 }
