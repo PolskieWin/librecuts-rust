@@ -356,10 +356,16 @@ fun VideoPreviewPlayer(
             liveAnimRot = (1f - animProgressIn) * 360f
             liveAnimScale = 0.3f + 0.7f * animProgressIn
         }
-        AnimationType.SlideIn -> {
+        AnimationType.SlideInLeft -> {
             liveAnimSlideX = (1f - animProgressIn) * -600f
         }
-        AnimationType.SlideOut -> {
+        AnimationType.SlideInRight -> {
+            liveAnimSlideX = (1f - animProgressIn) * 600f
+        }
+        AnimationType.SlideOutLeft -> {
+            liveAnimSlideX = (1f - animProgressOut) * -600f
+        }
+        AnimationType.SlideOutRight -> {
             liveAnimSlideX = (1f - animProgressOut) * 600f
         }
         AnimationType.Pulse -> {
@@ -369,23 +375,25 @@ fun VideoPreviewPlayer(
     }
 
     // Transitions (CrossDissolve, Wipe, Slide, etc.)
-    activeClip?.transition?.let { trans ->
-        val transProgress = (clipElapsedMs.toFloat() / trans.duration_ms.coerceAtLeast(200L)).coerceIn(0f, 1f)
-        when (trans.transition_type) {
-            TransitionType.CrossDissolve -> {
-                liveAnimAlpha *= transProgress
-            }
-            TransitionType.SlideLeft -> {
-                liveAnimSlideX += (1f - transProgress) * 400f
-            }
-            TransitionType.SlideRight -> {
-                liveAnimSlideX -= (1f - transProgress) * 400f
-            }
-            TransitionType.Zoom -> {
-                liveAnimScale *= (1.4f - 0.4f * transProgress)
-            }
-            else -> {}
+    val transDuration = activeClip?.transitionDurationMs ?: 500L
+    val transProgress = (clipElapsedMs.toFloat() / transDuration.coerceAtLeast(200L)).coerceIn(0f, 1f)
+    when (activeClip?.transition) {
+        TransitionType.CrossDissolve, TransitionType.Fade -> {
+            liveAnimAlpha *= transProgress
         }
+        TransitionType.SlideLeft -> {
+            liveAnimSlideX += (1f - transProgress) * 400f
+        }
+        TransitionType.SlideRight -> {
+            liveAnimSlideX -= (1f - transProgress) * 400f
+        }
+        TransitionType.ZoomBlur -> {
+            liveAnimScale *= (1.4f - 0.4f * transProgress)
+        }
+        TransitionType.WipeLeft -> {
+            liveAnimSlideX += (1f - transProgress) * 600f
+        }
+        else -> {}
     }
 
     // Dynamic Keyframe Interpolation & Auto-Creation (CapCut style)

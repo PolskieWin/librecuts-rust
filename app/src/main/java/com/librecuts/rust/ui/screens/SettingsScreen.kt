@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,8 +20,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FontDownload
@@ -41,6 +44,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -62,6 +67,7 @@ import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppLanguage
 import com.librecuts.rust.ui.theme.AppThemeMode
 import com.librecuts.rust.ui.theme.LocalAppStrings
+import com.librecuts.rust.ui.theme.colorFromHue
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,6 +79,8 @@ fun SettingsScreen(
     onLanguageChanged: (AppLanguage) -> Unit,
     isTimeTrackerEnabled: Boolean = false,
     onTimeTrackerChanged: (Boolean) -> Unit = {},
+    customAccentHue: Float = 28f,
+    onAccentHueChanged: (Float) -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -183,6 +191,94 @@ fun SettingsScreen(
                             onThemeChanged(AppThemeMode.PURE_BLACK)
                         }
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Custom Accent Color (Hue Slider - Orange, Blue, etc.)
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = strings.accentColorHue,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = strings.accentColorDesc,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(colorFromHue(customAccentHue))
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Slider(
+                        value = customAccentHue,
+                        onValueChange = {
+                            haptics.tick()
+                            onAccentHueChanged(it)
+                        },
+                        valueRange = 0f..360f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = colorFromHue(customAccentHue),
+                            activeTrackColor = colorFromHue(customAccentHue),
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Preset Color Chips (Orange default, Blue, Green, Purple, Rose)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val presets = listOf(
+                            28f to "Orange",
+                            210f to "Blue",
+                            145f to "Green",
+                            280f to "Purple",
+                            350f to "Rose"
+                        )
+                        presets.forEach { (hue, name) ->
+                            val isSelected = Math.abs(customAccentHue - hue) < 15f
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    haptics.snap()
+                                    onAccentHueChanged(hue)
+                                },
+                                label = { Text(name, fontSize = 11.sp) },
+                                leadingIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(colorFromHue(hue))
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             }
 

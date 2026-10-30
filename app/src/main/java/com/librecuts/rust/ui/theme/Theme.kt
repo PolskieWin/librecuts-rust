@@ -52,15 +52,21 @@ private val FallbackDarkColorScheme = darkColorScheme(
     onSurface = Color(0xFFF3F4F6)
 )
 
+fun colorFromHue(hue: Float): Color {
+    val hsv = floatArrayOf(hue.coerceIn(0f, 360f), 0.90f, 1.0f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
 @Composable
 fun LibreCutRustTheme(
     themeMode: AppThemeMode = AppThemeMode.PURE_BLACK,
+    customAccentHue: Float? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val supportsDynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    val colorScheme = when (themeMode) {
+    val baseScheme = when (themeMode) {
         AppThemeMode.MATERIAL_YOU_AUTO -> {
             if (supportsDynamic) dynamicDarkColorScheme(context) else FallbackDarkColorScheme
         }
@@ -83,6 +89,17 @@ fun LibreCutRustTheme(
                 onSurface = Color(0xFFFFFFFF)
             )
         }
+    }
+
+    val colorScheme = if (customAccentHue != null) {
+        val primaryCol = colorFromHue(customAccentHue)
+        val secondaryCol = colorFromHue((customAccentHue + 30f) % 360f)
+        baseScheme.copy(
+            primary = primaryCol,
+            secondary = secondaryCol
+        )
+    } else {
+        baseScheme
     }
 
     val view = LocalView.current

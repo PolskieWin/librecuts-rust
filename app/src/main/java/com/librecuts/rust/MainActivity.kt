@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
             var themeMode by remember { mutableStateOf(AppThemeMode.PURE_BLACK) }
             var appLanguage by remember { mutableStateOf(AppLanguage.ENGLISH) }
             var isTimeTrackerEnabled by remember { mutableStateOf(false) }
+            var customAccentHue by remember { mutableStateOf(prefs.getFloat("custom_accent_hue", 28f)) } // Default vibrant Orange (28f)
             var activeProject by remember { mutableStateOf<Project?>(null) }
 
             // Restore last active editing project seamlessly from background
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
                 LocalAppLanguage provides appLanguage,
                 LocalAppStrings provides currentStrings
             ) {
-                LibreCutRustTheme(themeMode = themeMode) {
+                LibreCutRustTheme(themeMode = themeMode, customAccentHue = customAccentHue) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
@@ -86,6 +87,11 @@ class MainActivity : ComponentActivity() {
                                     onLanguageChanged = { appLanguage = it },
                                     isTimeTrackerEnabled = isTimeTrackerEnabled,
                                     onTimeTrackerChanged = { isTimeTrackerEnabled = it },
+                                    customAccentHue = customAccentHue,
+                                    onAccentHueChanged = { hue ->
+                                        customAccentHue = hue
+                                        prefs.edit().putFloat("custom_accent_hue", hue).apply()
+                                    },
                                     onBack = { currentScreen = MainScreen.PROJECTS }
                                 )
                             }

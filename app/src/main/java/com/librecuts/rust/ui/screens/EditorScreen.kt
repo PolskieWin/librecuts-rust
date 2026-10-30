@@ -82,6 +82,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -118,6 +119,9 @@ import com.librecuts.rust.engine.AutoCaptionHelper
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.EffectConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.filled.AutoGraph
 import com.librecuts.rust.engine.ExportManager
 import com.librecuts.rust.engine.FileUtils
 import com.librecuts.rust.engine.FontManager
@@ -175,17 +179,6 @@ fun EditorScreen(
     var showJumpTimestampDialog by remember { mutableStateOf(false) }
     val activeUiLayout = pluginManager.getActiveUiLayout()
 
-    val cutPoints = remember(composition) {
-        val pts = mutableListOf(0L)
-        composition.tracks.forEach { trk ->
-            trk.clips.forEach { c ->
-                pts.add(c.timeline_start_ms)
-                pts.add(c.timeline_start_ms + c.durationMs)
-            }
-        }
-        pts.distinct().sorted()
-    }
-
     var projectTimeSpentSeconds by remember(project.id) { mutableLongStateOf(project.timeSpentSeconds) }
 
     // Active project editing time tracker ticker
@@ -210,6 +203,17 @@ fun EditorScreen(
     // Multi-track composition state loaded directly from the project
     var composition by remember(project.id) {
         mutableStateOf(project.composition)
+    }
+
+    val cutPoints = remember(composition) {
+        val pts = mutableListOf(0L)
+        composition.tracks.forEach { trk ->
+            trk.clips.forEach { c ->
+                pts.add(c.timeline_start_ms)
+                pts.add(c.timeline_start_ms + c.durationMs)
+            }
+        }
+        pts.distinct().sorted()
     }
 
     val undoStack = remember { mutableStateListOf<Composition>() }
@@ -628,7 +632,7 @@ fun EditorScreen(
                                 }
                             )
                             BottomToolbarItem(
-                                icon = Icons.Default.Timeline,
+                                icon = Icons.Default.AutoGraph,
                                 label = "Easing Graph",
                                 onClick = {
                                     haptics.tick()
