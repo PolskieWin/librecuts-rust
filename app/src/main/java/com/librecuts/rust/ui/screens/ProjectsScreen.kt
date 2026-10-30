@@ -181,7 +181,7 @@ fun ProjectsScreen(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                listOf(AccentBlue, AccentSkyBlue)
+                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                             )
                         )
                         .padding(horizontal = 20.dp),
@@ -492,9 +492,9 @@ fun ProjectCard(
                             .background(
                                 Brush.linearGradient(
                                     listOf(
-                                        Color(0xFF0F172A),
-                                        Color(0xFF0284C7).copy(alpha = 0.45f),
-                                        Color(0xFF38BDF8).copy(alpha = 0.25f)
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f)
                                     )
                                 )
                             ),
@@ -504,7 +504,7 @@ fun ProjectCard(
                             Icon(
                                 imageVector = Icons.Default.Movie,
                                 contentDescription = null,
-                                tint = AccentSkyBlue.copy(alpha = 0.75f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.height(2.dp))
@@ -512,7 +512,7 @@ fun ProjectCard(
                                 text = project.aspectRatio,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AccentSkyBlue.copy(alpha = 0.85f)
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f)
                             )
                         }
                     }
@@ -538,7 +538,7 @@ fun ProjectCard(
                 if (isTimeTrackerEnabled && project.timeSpentSeconds > 0) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF0284C7).copy(alpha = 0.85f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(8.dp)

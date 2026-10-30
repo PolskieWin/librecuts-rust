@@ -177,7 +177,7 @@ val EnglishStrings = AppStrings(
     madeBy = "Made by Tobiasz (PolskieWin)",
     builtWithAi = "Rebuilt & Designed with Antigravity AI",
     openGitHub = "View on GitHub",
-    versionLabel = "v2.4.2",
+    versionLabel = "v2.4.3",
 
     undo = "Undo",
     redo = "Redo",
@@ -289,7 +289,7 @@ val SpanishStrings = AppStrings(
     madeBy = "Hecho por Tobiasz (PolskieWin)",
     builtWithAi = "Reconstruido y diseñado con Antigravity AI",
     openGitHub = "Ver en GitHub",
-    versionLabel = "v2.4.2",
+    versionLabel = "v2.4.3",
 
     undo = "Deshacer",
     redo = "Rehacer",
@@ -401,7 +401,7 @@ val PolishStrings = AppStrings(
     madeBy = "Stworzone przez Tobiasza (PolskieWin)",
     builtWithAi = "Przebudowane i zaprojektowane z Antigravity AI",
     openGitHub = "Zobacz na GitHubie",
-    versionLabel = "v2.4.2",
+    versionLabel = "v2.4.3",
 
     undo = "Cofnij",
     redo = "Ponów",

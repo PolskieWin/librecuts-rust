@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -61,9 +62,11 @@ import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import com.librecuts.rust.engine.ThumbnailCache
+import com.librecuts.rust.engine.TtsHelper
 import com.librecuts.rust.plugin.UiLayoutMode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -161,6 +164,12 @@ fun EditorScreen(
     val pluginManager = remember { PluginManager(context) }
     val audioRecorder = remember { AudioRecorderHelper(context) }
     val autoCaptionHelper = remember { AutoCaptionHelper(context) }
+    val ttsHelper = remember { TtsHelper(context) }
+    DisposableEffect(Unit) {
+        onDispose {
+            ttsHelper.shutdown()
+        }
+    }
     val exportManager = remember { ExportManager(context) }
     val exportState by exportManager.exportState.collectAsState()
 
@@ -199,6 +208,8 @@ fun EditorScreen(
     var editingTextClipId by remember { mutableStateOf<String?>(null) }
     var showCustomScriptDialog by remember { mutableStateOf(false) }
     var customScriptText by remember { mutableStateOf("") }
+    var showTtsDialog by remember { mutableStateOf(false) }
+    var ttsInitialText by remember { mutableStateOf("") }
 
     // Multi-track composition state loaded directly from the project
     var composition by remember(project.id) {
@@ -886,6 +897,49 @@ fun EditorScreen(
                     var ovScale by remember(ovClip.id) { mutableFloatStateOf(1f) }
                     var ovRot by remember(ovClip.id) { mutableFloatStateOf(0f) }
 
+                    val ovRemainingMs = (((ovClip.timeline_start_ms) + ovClip.durationMs) - currentPositionMs).coerceAtLeast(0L)
+                    val animDur = 600L
+                    val ovProgIn = (clipOffsetMs.toFloat() / animDur).coerceIn(0f, 1f)
+                    val ovProgOut = (ovRemainingMs.toFloat() / animDur).coerceIn(0f, 1f)
+
+                    var ovAnimScale = 1.0f
+                    var ovAnimAlpha = 1.0f
+                    var ovAnimRot = 0.0f
+                    var ovAnimSlideX = 0.0f
+
+                    when (ovClip.animation) {
+                        AnimationType.FadeIn -> ovAnimAlpha = ovProgIn
+                        AnimationType.FadeOut -> ovAnimAlpha = ovProgOut
+                        AnimationType.ZoomIn -> ovAnimScale = 0.35f + 0.65f * ovProgIn
+                        AnimationType.ZoomOut -> ovAnimScale = 0.35f + 0.65f * ovProgOut
+                        AnimationType.BounceIn -> {
+                            val p = ovProgIn
+                            ovAnimScale = if (p < 0.65f) 0.3f + 0.9f * (p / 0.65f) else 1.2f - 0.2f * ((p - 0.65f) / 0.35f)
+                        }
+                        AnimationType.SpinIn -> {
+                            ovAnimRot = (1f - ovProgIn) * 360f
+                            ovAnimScale = 0.3f + 0.7f * ovProgIn
+                        }
+                        AnimationType.SpinOut -> {
+                            ovAnimRot = (1f - ovProgOut) * -360f
+                            ovAnimScale = 0.3f + 0.7f * ovProgOut
+                        }
+                        AnimationType.SlideInLeft -> ovAnimSlideX = (1f - ovProgIn) * -600f
+                        AnimationType.SlideInRight -> ovAnimSlideX = (1f - ovProgIn) * 600f
+                        AnimationType.SlideOutLeft -> ovAnimSlideX = (1f - ovProgOut) * -600f
+                        AnimationType.SlideOutRight -> ovAnimSlideX = (1f - ovProgOut) * 600f
+                        AnimationType.Pulse -> ovAnimScale = 1.0f + 0.04f * kotlin.math.sin(clipOffsetMs / 120.0).toFloat()
+                        AnimationType.Shake -> ovAnimSlideX = kotlin.math.sin(clipOffsetMs / 35.0).toFloat() * 25f
+                        AnimationType.Glitch -> ovAnimSlideX = if ((clipOffsetMs / 60) % 2 == 0L) 18f else -18f
+                        AnimationType.Pendulum -> ovAnimRot = kotlin.math.sin(clipOffsetMs / 180.0).toFloat() * 18f
+                        AnimationType.Flash -> ovAnimAlpha = if ((clipOffsetMs / 90) % 2 == 0L) 1.0f else 0.15f
+                        AnimationType.Swing -> {
+                            ovAnimRot = kotlin.math.sin(clipOffsetMs / 250.0).toFloat() * 12f
+                            ovAnimScale = 1.0f + 0.05f * kotlin.math.sin(clipOffsetMs / 250.0).toFloat()
+                        }
+                        else -> {}
+                    }
+
                     ovBitmap?.let { bmp ->
                         Box(
                             modifier = Modifier
@@ -916,13 +970,13 @@ fun EditorScreen(
                                     }
                                 }
                                 .graphicsLayer {
-                                    this.translationX = currentKf.x + ovPanX
+                                    this.translationX = currentKf.x + ovPanX + ovAnimSlideX
                                     this.translationY = currentKf.y + ovPanY
-                                    val totalScale = currentKf.scale * ovScale
+                                    val totalScale = currentKf.scale * ovScale * ovAnimScale
                                     this.scaleX = totalScale
                                     this.scaleY = totalScale
-                                    this.rotationZ = currentKf.rotation + ovRot
-                                    this.alpha = currentKf.opacity
+                                    this.rotationZ = currentKf.rotation + ovRot + ovAnimRot
+                                    this.alpha = (currentKf.opacity * ovAnimAlpha).coerceIn(0f, 1f)
                                 }
                         ) {
                             Image(
@@ -1046,7 +1100,7 @@ fun EditorScreen(
                                 haptics.snap()
                                 updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                             }) {
-                                Icon(Icons.Default.Diamond, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(15.dp))
+                                Icon(Icons.Default.Diamond, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(3.dp))
                                 Text("Keyframe", fontSize = 11.sp)
                             }
@@ -1280,7 +1334,7 @@ fun EditorScreen(
                         Icon(
                             Icons.Default.Diamond,
                             contentDescription = strings.keyframe,
-                            tint = if (selectedClip != null) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            tint = if (selectedClip != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
 
@@ -1422,6 +1476,11 @@ fun EditorScreen(
             containerColor = MaterialTheme.colorScheme.surface
         ) {
             SubtitleImportSheet(
+                onOpenTts = {
+                    showSubtitleSheet = false
+                    ttsInitialText = "LibreCut RS"
+                    showTtsDialog = true
+                },
                 onAutoCaptions = {
                     showSubtitleSheet = false
                     scope.launch {
@@ -1651,6 +1710,18 @@ fun EditorScreen(
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 4
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = {
+                            ttsInitialText = textToEdit
+                            showTtsDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Generate TTS Voiceover for this text", fontSize = 12.sp)
+                    }
                 }
             },
             confirmButton = {
@@ -1751,6 +1822,24 @@ fun EditorScreen(
         )
     }
 
+    // Native Android Text-to-Speech (TTS) Voiceover Dialog (0 Byte)
+    if (showTtsDialog) {
+        TtsVoiceoverDialog(
+            initialText = ttsInitialText,
+            ttsHelper = ttsHelper,
+            onAddVoiceoverClip = { newClip ->
+                val alignedClip = newClip.copy(timeline_start_ms = currentPositionMs)
+                val updatedTracks = composition.tracks.map { track ->
+                    if (track.track_type == TrackType.Audio) {
+                        track.copy(clips = track.clips + alignedClip)
+                    } else track
+                }
+                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+            },
+            onDismiss = { showTtsDialog = false }
+        )
+    }
+
     // Jump to Timestamp Dialog
     if (showJumpTimestampDialog) {
         JumpToTimestampDialog(
@@ -1846,6 +1935,141 @@ private fun parseTimeToMs(input: String, fallback: Long): Long {
     } catch (e: Exception) {
         fallback
     }
+}
+
+@Composable
+private fun TtsVoiceoverDialog(
+    initialText: String,
+    ttsHelper: TtsHelper,
+    onAddVoiceoverClip: (Clip) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var textInput by remember { mutableStateOf(initialText) }
+    var pitch by remember { mutableFloatStateOf(1.0f) }
+    var speed by remember { mutableFloatStateOf(1.0f) }
+    var isGenerating by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val haptics = rememberHapticHelper()
+
+    AlertDialog(
+        onDismissRequest = {
+            ttsHelper.stop()
+            onDismiss()
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Text to Speech Voiceover", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Android Native TTS (0 Byte added, 100% offline):",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = textInput,
+                    onValueChange = { textInput = it },
+                    placeholder = { Text("Enter text to speak...") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    maxLines = 4
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Voice Pitch Slider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Pitch: ${((pitch * 10).toInt() / 10f)}x", fontSize = 11.sp)
+                    Slider(
+                        value = pitch,
+                        onValueChange = { pitch = it },
+                        valueRange = 0.5f..2.0f,
+                        modifier = Modifier.width(160.dp)
+                    )
+                }
+
+                // Speech Speed Slider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Speed: ${((speed * 10).toInt() / 10f)}x", fontSize = 11.sp)
+                    Slider(
+                        value = speed,
+                        onValueChange = { speed = it },
+                        valueRange = 0.5f..2.0f,
+                        modifier = Modifier.width(160.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Audition Button
+                OutlinedButton(
+                    onClick = {
+                        haptics.tick()
+                        if (textInput.isNotBlank()) {
+                            ttsHelper.speak(textInput, pitch, speed)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Audition Voice", fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = textInput.isNotBlank() && !isGenerating,
+                onClick = {
+                    haptics.snap()
+                    isGenerating = true
+                    scope.launch {
+                        val result = ttsHelper.synthesizeVoiceoverToFile(textInput, pitch, speed)
+                        isGenerating = false
+                        if (result != null) {
+                            val (file, durationMs) = result
+                            val newClip = Clip(
+                                id = UUID.randomUUID().toString(),
+                                file_path = file.absolutePath,
+                                source_start_ms = 0L,
+                                source_end_ms = durationMs.coerceAtLeast(600L),
+                                timeline_start_ms = 0L,
+                                volume = 1.0f
+                            )
+                            onAddVoiceoverClip(newClip)
+                            onDismiss()
+                            Toast.makeText(context, "TTS Voiceover added to audio track!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Speech synthesis completed", Toast.LENGTH_SHORT).show()
+                            onDismiss()
+                        }
+                    }
+                }
+            ) {
+                Text(if (isGenerating) "Synthesizing..." else "Add to Timeline")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                ttsHelper.stop()
+                onDismiss()
+            }) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -1986,7 +2210,7 @@ private fun AudioImportSheet(
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
                             contentDescription = "Audition Sound",
-                            tint = if (isPlaying) Color(0xFF00E5FF) else MaterialTheme.colorScheme.primary
+                            tint = if (isPlaying) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -2015,6 +2239,7 @@ private fun AudioImportSheet(
 
 @Composable
 private fun SubtitleImportSheet(
+    onOpenTts: () -> Unit,
     onAutoCaptions: () -> Unit,
     onCustomScript: () -> Unit,
     onImportSrt: () -> Unit,
@@ -2034,11 +2259,37 @@ private fun SubtitleImportSheet(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Generate on-device captions or import external subtitle files",
+            text = "Generate on-device captions, speech synthesis, or import subtitles",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Option 0: Android Native Text-to-Speech (TTS Voiceover - 0 Byte)
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.snap()
+                    onOpenTts()
+                }
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Text to Speech (TTS Voiceover)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text("0 Byte offline speech synthesis: generate voiceover directly from text", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Option 1: Auto Captions (CapCut Style)
         Card(

@@ -368,8 +368,29 @@ fun VideoPreviewPlayer(
         AnimationType.SlideOutRight -> {
             liveAnimSlideX = (1f - animProgressOut) * 600f
         }
+        AnimationType.SpinOut -> {
+            liveAnimRot = (1f - animProgressOut) * -360f
+            liveAnimScale = 0.3f + 0.7f * animProgressOut
+        }
         AnimationType.Pulse -> {
             liveAnimScale = 1.0f + 0.04f * sin(clipElapsedMs / 120.0).toFloat()
+        }
+        AnimationType.Shake -> {
+            liveAnimSlideX = sin(clipElapsedMs / 35.0).toFloat() * 25f
+        }
+        AnimationType.Glitch -> {
+            liveAnimSlideX = if ((clipElapsedMs / 60) % 2 == 0L) 18f else -18f
+            liveAnimAlpha = if ((clipElapsedMs / 70) % 3 == 0L) 0.6f else 1.0f
+        }
+        AnimationType.Pendulum -> {
+            liveAnimRot = sin(clipElapsedMs / 180.0).toFloat() * 18f
+        }
+        AnimationType.Flash -> {
+            liveAnimAlpha = if ((clipElapsedMs / 90) % 2 == 0L) 1.0f else 0.15f
+        }
+        AnimationType.Swing -> {
+            liveAnimRot = sin(clipElapsedMs / 250.0).toFloat() * 12f
+            liveAnimScale = 1.0f + 0.05f * sin(clipElapsedMs / 250.0).toFloat()
         }
         else -> {}
     }
@@ -486,7 +507,12 @@ fun VideoPreviewPlayer(
 
             AndroidView(
                 factory = { ctx ->
-                    PlayerView(ctx).apply {
+                    val pv = try {
+                        android.view.LayoutInflater.from(ctx).inflate(com.librecuts.rust.R.layout.exo_player_view, null) as PlayerView
+                    } catch (e: Exception) {
+                        PlayerView(ctx)
+                    }
+                    pv.apply {
                         player = exoPlayer
                         useController = false
                         resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT

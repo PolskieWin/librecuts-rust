@@ -175,7 +175,7 @@ fun TimelineView(
                                 TrackType.Video -> TrackVideoColor
                                 TrackType.Audio -> TrackAudioColor
                                 TrackType.Overlay -> TrackOverlayColor
-                                TrackType.Text -> Color(0xFF00E5FF)
+                                TrackType.Text -> MaterialTheme.colorScheme.primary
                             },
                             modifier = Modifier.size(16.dp)
                         )
@@ -252,9 +252,10 @@ fun TimelineView(
                     .fillMaxHeight()
             ) {
                 // Floating timestamp bubble above playhead
+                val playheadColor = MaterialTheme.colorScheme.primary
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = Color(0xFF00E5FF),
+                    color = playheadColor,
                     shadowElevation = 4.dp,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -264,7 +265,7 @@ fun TimelineView(
                         text = timecodeStr,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                     )
                 }
@@ -284,11 +285,11 @@ fun TimelineView(
                         lineTo(0f, 10f)
                         close()
                     }
-                    drawPath(path = headPath, color = Color(0xFF00E5FF))
+                    drawPath(path = headPath, color = playheadColor)
 
                     // Playhead Vertical Line
                     drawLine(
-                        color = Color(0xFF00E5FF),
+                        color = playheadColor,
                         start = Offset(0f, 0f),
                         end = Offset(0f, size.height),
                         strokeWidth = 2.5f
@@ -396,7 +397,7 @@ private fun TrackRow(
                     Icon(
                         imageVector = Icons.Default.Diamond,
                         contentDescription = "Keyframe",
-                        tint = Color(0xFF00E5FF),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .offset(x = kfOffsetDp)
                             .align(Alignment.BottomStart)

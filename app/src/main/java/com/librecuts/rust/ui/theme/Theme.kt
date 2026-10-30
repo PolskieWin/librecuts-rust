@@ -52,8 +52,8 @@ private val FallbackDarkColorScheme = darkColorScheme(
     onSurface = Color(0xFFF3F4F6)
 )
 
-fun colorFromHue(hue: Float): Color {
-    val hsv = floatArrayOf(hue.coerceIn(0f, 360f), 0.90f, 1.0f)
+fun colorFromHue(hue: Float, saturation: Float = 0.90f, value: Float = 1.0f): Color {
+    val hsv = floatArrayOf(hue.coerceIn(0f, 360f), saturation.coerceIn(0f, 1f), value.coerceIn(0f, 1f))
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
@@ -92,11 +92,27 @@ fun LibreCutRustTheme(
     }
 
     val colorScheme = if (customAccentHue != null) {
-        val primaryCol = colorFromHue(customAccentHue)
-        val secondaryCol = colorFromHue((customAccentHue + 30f) % 360f)
+        val primaryCol = colorFromHue(customAccentHue, 0.95f, 1.0f)
+        val primaryContainerCol = colorFromHue(customAccentHue, 0.85f, 0.38f)
+        val secondaryCol = colorFromHue((customAccentHue + 25f) % 360f, 0.90f, 0.95f)
+        val secondaryContainerCol = colorFromHue((customAccentHue + 25f) % 360f, 0.80f, 0.32f)
+        val tertiaryCol = colorFromHue((customAccentHue + 50f) % 360f, 0.90f, 0.95f)
+        val tertiaryContainerCol = colorFromHue((customAccentHue + 50f) % 360f, 0.80f, 0.32f)
+
         baseScheme.copy(
             primary = primaryCol,
-            secondary = secondaryCol
+            onPrimary = Color.White,
+            primaryContainer = primaryContainerCol,
+            onPrimaryContainer = Color.White,
+            secondary = secondaryCol,
+            onSecondary = Color.White,
+            secondaryContainer = secondaryContainerCol,
+            onSecondaryContainer = Color.White,
+            tertiary = tertiaryCol,
+            onTertiary = Color.White,
+            tertiaryContainer = tertiaryContainerCol,
+            onTertiaryContainer = Color.White,
+            inversePrimary = colorFromHue(customAccentHue, 0.55f, 0.88f)
         )
     } else {
         baseScheme
