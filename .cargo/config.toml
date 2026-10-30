@@ -1,15 +1,14 @@
 # 16KB Page Size Alignment configuration for Android 14+ / Android 15 compatibility
-# Google requires Android apps running native code to be compatible with 16KB ELF alignment.
+# In Clang, linker flags for lld must be passed with -Wl,-z,max-page-size=16384
 
 [target.aarch64-linux-android]
-rustflags = ["-C", "link-arg=-zmax-page-size=16384"]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
 
 [target.armv7-linux-androideabi]
-rustflags = ["-C", "link-arg=-zmax-page-size=16384"]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
 
 [target.x86_64-linux-android]
-rustflags = ["-C", "link-arg=-zmax-page-size=16384"]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
 
 [target.i686-linux-android]
-rustflags = ["-C", "link-arg=-zmax-page-size=16384"]
-
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
