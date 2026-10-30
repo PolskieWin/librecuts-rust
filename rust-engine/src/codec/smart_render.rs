@@ -25,9 +25,9 @@ pub fn fast_trim_video(
 
         let c_input = CString::new(input_path).map_err(|e| e.to_string())?;
         let set_res = AMediaExtractor_setDataSource(extractor, c_input.as_ptr());
-        if set_res != media_status_t_AMEDIA_OK {
+        if set_res as i32 != 0 {
             AMediaExtractor_delete(extractor);
-            return Err(format!("AMediaExtractor_setDataSource failed with code {}", set_res));
+            return Err(format!("AMediaExtractor_setDataSource failed with code {:?}", set_res));
         }
 
         // Open Output File Descriptor for AMediaMuxer
@@ -42,9 +42,10 @@ pub fn fast_trim_video(
             return Err("Failed to open output file for muxing".into());
         }
 
+        // 0 = AMEDIAMUXER_OUTPUT_FORMAT_MPEG_4
         let muxer = AMediaMuxer_new(
             output_fd,
-            media_status_t_AMEDIA_MUXER_OUTPUT_FORMAT_MPEG_4 as u32,
+            std::mem::transmute(0),
         );
         if muxer.is_null() {
             libc::close(output_fd);
@@ -69,7 +70,7 @@ pub fn fast_trim_video(
         }
 
         let mux_start_res = AMediaMuxer_start(muxer);
-        if mux_start_res != media_status_t_AMEDIA_OK {
+        if mux_start_res as i32 != 0 {
             AMediaMuxer_delete(muxer);
             libc::close(output_fd);
             AMediaExtractor_delete(extractor);
@@ -82,7 +83,7 @@ pub fn fast_trim_video(
         AMediaExtractor_seekTo(
             extractor,
             seek_us,
-            AMediaExtractorSeekMode_AMEDIAEXTRACTOR_SEEK_PREVIOUS_SYNC,
+            std::mem::transmute(0),
         );
 
         // Allocate copy buffer (1MB chunks)

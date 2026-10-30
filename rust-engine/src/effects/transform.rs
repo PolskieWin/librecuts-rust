@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 /// Fast horizontal flip for RGBA buffer
-pub fn flip_horizontal(rgba_buffer: &mut [u8], width: u32, height: u32) {
+pub fn flip_horizontal(rgba_buffer: &mut [u8], width: u32, _height: u32) {
     let row_stride = width as usize * 4;
     rgba_buffer
         .par_chunks_exact_mut(row_stride)

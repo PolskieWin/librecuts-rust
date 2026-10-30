@@ -21,7 +21,7 @@ pub fn probe_media(file_path: &str) -> Result<MediaProbeResult, String> {
         }
 
         let c_path = CString::new(file_path).map_err(|e| e.to_string())?;
-        if AMediaExtractor_setDataSource(extractor, c_path.as_ptr()) != media_status_t_AMEDIA_OK {
+        if (AMediaExtractor_setDataSource(extractor, c_path.as_ptr()) as i32) != 0 {
             AMediaExtractor_delete(extractor);
             return Err("Failed to read data source for probe".into());
         }

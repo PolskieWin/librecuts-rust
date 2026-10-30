@@ -4,8 +4,8 @@ use rayon::prelude::*;
 /// Processes an RGBA byte slice in-place.
 pub fn apply_chroma_key(
     rgba_buffer: &mut [u8],
-    width: u32,
-    height: u32,
+    _width: u32,
+    _height: u32,
     target_r: u8,
     target_g: u8,
     target_b: u8,
