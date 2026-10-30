@@ -1951,6 +1951,7 @@ private fun TtsVoiceoverDialog(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
 
     AlertDialog(
         onDismissRequest = {
@@ -2109,6 +2110,7 @@ private fun AudioImportSheet(
 ) {
     val context = LocalContext.current
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     val sfxManager = remember { SoundEffectsManager(context) }
     var sfxList by remember { mutableStateOf<List<SoundEffectsManager.SoundEffectItem>>(emptyList()) }
     var auditioningFile by remember { mutableStateOf<String?>(null) }
@@ -2133,7 +2135,7 @@ private fun AudioImportSheet(
             .padding(20.dp)
     ) {
         Text(
-            text = "Audio & Sound Effects",
+            text = strings.addAudio,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
