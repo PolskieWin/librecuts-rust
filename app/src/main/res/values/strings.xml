@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">LibreCut Rust</string>
+    <string name="action_import">Import Video</string>
+    <string name="action_export">Export Fast</string>
+    <string name="action_split">Split</string>
+    <string name="action_effects">Effects</string>
+    <string name="action_audio">Audio Boost</string>
+    <string name="action_chroma">Green Screen</string>
+    <string name="timeline_hint">Drag or pinch timeline to scrub frames</string>
+</resources>
+

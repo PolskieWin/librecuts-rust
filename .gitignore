@@ -1,0 +1,24 @@
+# Android / Gradle
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+app/src/main/jniLibs/
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Operating System
+Thumbs.db
+*.bak
+*.swp
+*~
+
