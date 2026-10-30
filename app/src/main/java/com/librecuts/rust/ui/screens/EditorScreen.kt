@@ -14,19 +14,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,31 +46,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
+import com.librecuts.rust.engine.EffectConfig
 import com.librecuts.rust.engine.ExportManager
+import com.librecuts.rust.engine.FileUtils
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
 import com.librecuts.rust.ui.components.TimelineView
 import com.librecuts.rust.ui.components.VideoPreviewPlayer
-import com.librecuts.rust.ui.theme.AccentAmber
-import com.librecuts.rust.ui.theme.DarkBackground
-import com.librecuts.rust.ui.theme.DarkSurface
+import com.librecuts.rust.ui.theme.AppThemeMode
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditorScreen() {
+fun EditorScreen(
+    currentTheme: AppThemeMode,
+    onThemeChanged: (AppThemeMode) -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val exportManager = remember { ExportManager(context) }
@@ -72,8 +87,9 @@ fun EditorScreen() {
     var selectedClipId by remember { mutableStateOf<String?>(null) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showEffectsSheet by remember { mutableStateOf(false) }
+    var showThemeMenu by remember { mutableStateOf(false) }
 
-    // Multi-track composition state
+    // Multi-track composition state with Undo / Redo history
     var composition by remember {
         mutableStateOf(
             Composition(
@@ -86,30 +102,41 @@ fun EditorScreen() {
         )
     }
 
-    // Modern Android 14+ Photo & Video Picker contract
+    val undoStack = remember { mutableStateListOf<Composition>() }
+    val redoStack = remember { mutableStateListOf<Composition>() }
+
+    fun updateCompositionWithUndo(newComp: Composition) {
+        undoStack.add(composition)
+        redoStack.clear()
+        composition = newComp
+    }
+
+    // Modern Android 14+ Photo & Video Picker contract with local cached path resolution
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val clipId = UUID.randomUUID().toString()
-            val newClip = Clip(
-                id = clipId,
-                file_path = it.toString(),
-                source_start_ms = 0L,
-                source_end_ms = 15_000L, // default 15s window, auto-updated by probe
-                timeline_start_ms = composition.totalDurationMs
-            )
+            scope.launch {
+                val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, it)
+                val clipId = UUID.randomUUID().toString()
+                val newClip = Clip(
+                    id = clipId,
+                    file_path = localPath,
+                    source_start_ms = 0L,
+                    source_end_ms = realDurationMs,
+                    timeline_start_ms = composition.totalDurationMs
+                )
 
-            // Append to main video track
-            val updatedTracks = composition.tracks.map { track ->
-                if (track.track_type == TrackType.Video) {
-                    track.copy(clips = track.clips + newClip)
-                } else {
-                    track
+                val updatedTracks = composition.tracks.map { track ->
+                    if (track.track_type == TrackType.Video) {
+                        track.copy(clips = track.clips + newClip)
+                    } else {
+                        track
+                    }
                 }
+                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                selectedClipId = clipId
             }
-            composition = composition.copy(tracks = updatedTracks)
-            selectedClipId = clipId
         }
     }
 
@@ -120,27 +147,121 @@ fun EditorScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("LibreCut RS (Android 14+)", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface),
+                title = {
+                    Text(
+                        text = "LibreCut RS",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 actions = {
-                    Button(
-                        onClick = { videoPickerLauncher.launch("video/*") },
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurface)
+                    // Undo Button
+                    IconButton(
+                        onClick = {
+                            if (undoStack.isNotEmpty()) {
+                                val prev = undoStack.removeAt(undoStack.lastIndex)
+                                redoStack.add(composition)
+                                composition = prev
+                            }
+                        },
+                        enabled = undoStack.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Clip", tint = AccentAmber)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Import", color = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.Undo,
+                            contentDescription = "Undo",
+                            tint = if (undoStack.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    // Redo Button
+                    IconButton(
+                        onClick = {
+                            if (redoStack.isNotEmpty()) {
+                                val next = redoStack.removeAt(redoStack.lastIndex)
+                                undoStack.add(composition)
+                                composition = next
+                            }
+                        },
+                        enabled = redoStack.isNotEmpty()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Redo,
+                            contentDescription = "Redo",
+                            tint = if (redoStack.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
 
+                    // Theme Switcher Menu
+                    Box {
+                        IconButton(onClick = { showThemeMenu = true }) {
+                            Icon(
+                                imageVector = when (currentTheme) {
+                                    AppThemeMode.LIGHT -> Icons.Default.LightMode
+                                    AppThemeMode.DARK -> Icons.Default.DarkMode
+                                    AppThemeMode.PURE_BLACK -> Icons.Default.ColorLens
+                                },
+                                contentDescription = "Switch Theme",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showThemeMenu,
+                            onDismissRequest = { showThemeMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("☀️ Light Mode") },
+                                onClick = {
+                                    onThemeChanged(AppThemeMode.LIGHT)
+                                    showThemeMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("🌙 Dark Mode") },
+                                onClick = {
+                                    onThemeChanged(AppThemeMode.DARK)
+                                    showThemeMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("⬛ Pure Black (OLED)") },
+                                onClick = {
+                                    onThemeChanged(AppThemeMode.PURE_BLACK)
+                                    showThemeMenu = false
+                                }
+                            )
+                        }
+                    }
+
+                    // Import Video Button
+                    Button(
+                        onClick = { videoPickerLauncher.launch("video/*") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Import", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Import")
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Export Button
                     Button(
                         onClick = { showExportDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentAmber)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Icon(Icons.Default.FileUpload, contentDescription = "Export", tint = Color.Black)
+                        Icon(Icons.Default.FileUpload, contentDescription = "Export")
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export", color = Color.Black)
+                        Text("Export")
                     }
                 }
             )
@@ -150,41 +271,71 @@ fun EditorScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(DarkBackground)
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            // Live Preview Player (Upper half)
+            // Live Preview Player Box with Text Overlay (Upper half)
             val currentVideoUri = composition.tracks
                 .find { it.track_type == TrackType.Video }
                 ?.clips
                 ?.firstOrNull()
                 ?.file_path
 
-            VideoPreviewPlayer(
-                videoUri = currentVideoUri,
-                isPlaying = isPlaying,
-                currentPositionMs = currentPositionMs,
-                onPositionChanged = { currentPositionMs = it },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1.0f)
-            )
+            ) {
+                VideoPreviewPlayer(
+                    videoUri = currentVideoUri,
+                    isPlaying = isPlaying,
+                    currentPositionMs = currentPositionMs,
+                    onPositionChanged = { currentPositionMs = it },
+                    onPlaybackEnded = { isPlaying = false },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Render Active Text Overlays if present on active clip
+                val activeTextOverlay = composition.tracks
+                    .flatMap { it.clips }
+                    .filter { currentPositionMs in it.timeline_start_ms..(it.timeline_start_ms + it.durationMs) }
+                    .flatMap { it.effects }
+                    .filterIsInstance<EffectConfig.TextOverlay>()
+                    .firstOrNull()
+
+                activeTextOverlay?.let { textEff ->
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = textEff.text,
+                            fontSize = textEff.font_size.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
 
             // Timeline Action Controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .background(DarkSurface)
+                    .height(50.dp)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Play / Pause
+                // Play / Pause Toggle
                 IconButton(onClick = { isPlaying = !isPlaying }) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play/Pause",
-                        tint = AccentAmber
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -210,22 +361,30 @@ fun EditorScreen() {
                                             if (it.id == clip.id) listOf(firstHalf, secondHalf) else listOf(it)
                                         })
                                     }
-                                    composition = composition.copy(tracks = updatedTracks)
+                                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                                     selectedClipId = secondHalf.id
                                 }
                             }
                         },
                         enabled = selectedClip != null
                     ) {
-                        Icon(Icons.Default.CallSplit, contentDescription = "Split", tint = Color.White)
+                        Icon(
+                            Icons.Default.CallSplit,
+                            contentDescription = "Split",
+                            tint = if (selectedClip != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
 
-                    // Effects / Filters / Chroma Key
+                    // Effects / Filters / Chroma Key / Text Sheet
                     IconButton(
                         onClick = { showEffectsSheet = true },
                         enabled = selectedClip != null
                     ) {
-                        Icon(Icons.Default.AutoFixHigh, contentDescription = "Effects", tint = AccentAmber)
+                        Icon(
+                            Icons.Default.AutoFixHigh,
+                            contentDescription = "Effects",
+                            tint = if (selectedClip != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
 
                     // Delete Clip
@@ -235,13 +394,17 @@ fun EditorScreen() {
                                 val updatedTracks = composition.tracks.map { track ->
                                     track.copy(clips = track.clips.filterNot { it.id == id })
                                 }
-                                composition = composition.copy(tracks = updatedTracks)
+                                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                                 selectedClipId = null
                             }
                         },
                         enabled = selectedClip != null
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = if (selectedClip != null) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
                 }
             }
@@ -260,11 +423,12 @@ fun EditorScreen() {
         }
     }
 
-    // Effects Bottom Sheet
+    // Effects & Text Bottom Sheet
     if (showEffectsSheet && selectedClip != null) {
         ModalBottomSheet(
             onDismissRequest = { showEffectsSheet = false },
-            sheetState = rememberModalBottomSheetState()
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             EffectsSheet(
                 clip = selectedClip,
@@ -276,7 +440,7 @@ fun EditorScreen() {
                             } else it
                         })
                     }
-                    composition = composition.copy(tracks = updatedTracks)
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                 }
             )
         }
@@ -302,4 +466,3 @@ fun EditorScreen() {
         )
     }
 }
-

@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,8 +36,6 @@ import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
-import com.librecuts.rust.ui.theme.DarkSurface
-import com.librecuts.rust.ui.theme.DarkSurfaceElevated
 import com.librecuts.rust.ui.theme.TrackAudioColor
 import com.librecuts.rust.ui.theme.TrackOverlayColor
 import com.librecuts.rust.ui.theme.TrackVideoColor
@@ -57,19 +55,44 @@ fun TimelineView(
     val totalDurationMs = composition.totalDurationMs.coerceAtLeast(10_000L)
     val totalWidthDp = ((totalDurationMs * zoomScale)).coerceAtLeast(300f).dp
 
+    // Magnetic Snapping Points: 0, and clip starts/ends
+    val snapPoints = remember(composition) {
+        val points = mutableListOf(0L)
+        composition.tracks.forEach { track ->
+            track.clips.forEach { clip ->
+                points.add(clip.timeline_start_ms)
+                points.add(clip.timeline_start_ms + clip.durationMs)
+            }
+        }
+        points.distinct()
+    }
+
+    fun applySnap(rawMs: Long): Long {
+        val thresholdMs = 150L
+        val snapCandidate = snapPoints.find { Math.abs(it - rawMs) <= thresholdMs }
+        return snapCandidate ?: rawMs.coerceIn(0L, totalDurationMs)
+    }
+
     val transformState = rememberTransformableState { zoomChange, _, _ ->
         zoomScale = (zoomScale * zoomChange).coerceIn(0.01f, 0.5f)
     }
 
     Box(
         modifier = modifier
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .transformable(state = transformState)
             .horizontalScroll(scrollState)
             .pointerInput(totalDurationMs) {
                 detectTapGestures { offset ->
                     val clickedTimeMs = (offset.x / zoomScale).toLong()
-                    onSeekPosition(clickedTimeMs.coerceIn(0L, totalDurationMs))
+                    onSeekPosition(applySnap(clickedTimeMs))
+                }
+            }
+            .pointerInput(totalDurationMs) {
+                detectDragGestures { change, _ ->
+                    change.consume()
+                    val draggedTimeMs = (change.position.x / zoomScale).toLong()
+                    onSeekPosition(applySnap(draggedTimeMs))
                 }
             }
     ) {
@@ -85,7 +108,7 @@ fun TimelineView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp)
-                    .background(DarkSurfaceElevated)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
 
             // Tracks
@@ -127,6 +150,9 @@ private fun TimeRuler(
     scale: Float,
     modifier: Modifier = Modifier
 ) {
+    val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val subTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+
     Canvas(modifier = modifier) {
         val stepMs = 1000L
         var currentMs = 0L
@@ -137,7 +163,7 @@ private fun TimeRuler(
             val tickHeight = if (isMajor) 14f else 7f
 
             drawLine(
-                color = if (isMajor) Color.LightGray else Color.DarkGray,
+                color = if (isMajor) tickColor else subTickColor,
                 start = Offset(x, size.height - tickHeight),
                 end = Offset(x, size.height),
                 strokeWidth = 2f
@@ -157,7 +183,7 @@ private fun TrackRow(
 ) {
     Box(
         modifier = modifier
-            .background(DarkSurfaceElevated.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
     ) {
         track.clips.forEach { clip ->
             val startDp = (clip.timeline_start_ms * scale).dp
@@ -177,8 +203,8 @@ private fun TrackRow(
                     .width(widthDp)
                     .fillMaxSize()
                     .padding(horizontal = 1.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(if (isSelected) Color.White else clipColor)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary else clipColor)
                     .pointerInput(clip.id) {
                         detectTapGestures { onClipSelected(clip) }
                     },
@@ -187,7 +213,7 @@ private fun TrackRow(
                 Text(
                     text = "${track.track_type.name}: ${clip.durationMs / 1000}s",
                     fontSize = 11.sp,
-                    color = if (isSelected) Color.Black else Color.White,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
                     modifier = Modifier.padding(horizontal = 6.dp),
                     maxLines = 1
                 )
@@ -195,4 +221,3 @@ private fun TrackRow(
         }
     }
 }
-

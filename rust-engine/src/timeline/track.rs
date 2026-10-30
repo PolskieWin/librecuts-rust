@@ -48,6 +48,13 @@ pub enum EffectConfig {
         flip_h: bool,
         flip_v: bool,
     },
+    TextOverlay {
+        text: String,
+        font_size: f32,
+        x: f32,
+        y: f32,
+        color_rgba: u32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,12 +64,20 @@ pub struct Clip {
     pub source_start_ms: u64,
     pub source_end_ms: u64,
     pub timeline_start_ms: u64,
+    #[serde(default = "default_speed")]
     pub speed: f32,
+    #[serde(default = "default_volume")]
     pub volume: f32,
+    #[serde(default)]
     pub muted: bool,
+    #[serde(default)]
     pub keyframes: Vec<Keyframe>,
+    #[serde(default)]
     pub effects: Vec<EffectConfig>,
 }
+
+fn default_speed() -> f32 { 1.0 }
+fn default_volume() -> f32 { 1.0 }
 
 impl Clip {
     pub fn duration_ms(&self) -> u64 {

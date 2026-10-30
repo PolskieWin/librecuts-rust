@@ -61,6 +61,16 @@ sealed class EffectConfig {
         val flip_h: Boolean = false,
         val flip_v: Boolean = false
     ) : EffectConfig()
+
+    @Serializable
+    @SerialName("TextOverlay")
+    data class TextOverlay(
+        val text: String = "LibreCut",
+        val font_size: Float = 24f,
+        val x: Float = 0.5f,
+        val y: Float = 0.8f,
+        val color_rgba: Long = 0xFFFFFFFFL
+    ) : EffectConfig()
 }
 
 @Serializable

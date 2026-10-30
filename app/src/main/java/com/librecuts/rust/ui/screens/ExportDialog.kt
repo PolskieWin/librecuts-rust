@@ -29,8 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.librecuts.rust.engine.ExportState
-import com.librecuts.rust.ui.theme.AccentAmber
-import com.librecuts.rust.ui.theme.DarkSurfaceElevated
 
 @Composable
 fun ExportDialog(
@@ -52,7 +50,7 @@ fun ExportDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = DarkSurfaceElevated,
+            color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.padding(16.dp)
         ) {
             Column(
@@ -63,7 +61,7 @@ fun ExportDialog(
                 Text(
                     text = "Export Fast Video (Rust NDK)",
                     style = MaterialTheme.typography.titleMedium,
-                    color = AccentAmber
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -71,13 +69,13 @@ fun ExportDialog(
                     is ExportState.Exporting -> {
                         Text(
                             text = "Rendering: ${(exportState.progress * 100).toInt()}%",
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
                             progress = { exportState.progress },
                             modifier = Modifier.fillMaxWidth(),
-                            color = AccentAmber,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
@@ -91,15 +89,18 @@ fun ExportDialog(
                     is ExportState.Success -> {
                         Text(
                             text = "Export Complete!\nSaved to Movies/LibreCut",
-                            color = Color.Green
+                            color = Color(0xFF4CAF50)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = onDismiss,
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentAmber),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Done", color = Color.Black)
+                            Text("Done")
                         }
                     }
                     is ExportState.Error -> {
@@ -117,7 +118,7 @@ fun ExportDialog(
                     }
                     ExportState.Idle -> {
                         // Settings Selection
-                        Text("Target Resolution:", color = Color.LightGray)
+                        Text("Target Resolution:", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         resolutions.forEachIndexed { idx, pair ->
                             Row(
                                 modifier = Modifier
@@ -126,11 +127,11 @@ fun ExportDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(pair.second, color = Color.White)
+                                Text(pair.second, color = MaterialTheme.colorScheme.onSurface)
                                 OutlinedButton(
                                     onClick = { selectedResIndex = idx },
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = if (selectedResIndex == idx) AccentAmber else Color.Gray
+                                        contentColor = if (selectedResIndex == idx) MaterialTheme.colorScheme.primary else Color.Gray
                                     )
                                 ) {
                                     Text(if (selectedResIndex == idx) "Selected" else "Select")
@@ -146,8 +147,8 @@ fun ExportDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Smart Render (Lossless)", color = Color.White)
-                                Text("Zero-reencode stream copy when possible", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                                Text("Smart Render (Lossless)", color = MaterialTheme.colorScheme.onSurface)
+                                Text("Zero-reencode stream copy when possible", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                             }
                             Switch(
                                 checked = smartRender,
@@ -170,9 +171,12 @@ fun ExportDialog(
                                     val res = resolutions[selectedResIndex].first
                                     onStartExport(res, selectedFps, 14, smartRender)
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentAmber)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             ) {
-                                Text("Start Export", color = Color.Black)
+                                Text("Start Export")
                             }
                         }
                     }
@@ -181,4 +185,3 @@ fun ExportDialog(
         }
     }
 }
-

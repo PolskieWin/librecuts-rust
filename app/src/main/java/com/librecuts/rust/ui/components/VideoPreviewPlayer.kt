@@ -4,9 +4,7 @@ import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +19,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -29,12 +29,28 @@ fun VideoPreviewPlayer(
     isPlaying: Boolean,
     currentPositionMs: Long,
     onPositionChanged: (Long) -> Unit,
+    onPlaybackEnded: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_OFF
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    onPlaybackEnded()
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+            exoPlayer.release()
         }
     }
 
@@ -46,29 +62,28 @@ fun VideoPreviewPlayer(
         }
     }
 
+    // Playback loop with real-time playhead update
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             exoPlayer.play()
+            while (isActive) {
+                onPositionChanged(exoPlayer.currentPosition)
+                delay(40) // Smooth ~25fps scrubber update
+            }
         } else {
             exoPlayer.pause()
         }
     }
 
+    // Scrubbing synchronization
     LaunchedEffect(currentPositionMs) {
-        if (Math.abs(exoPlayer.currentPosition - currentPositionMs) > 150) {
+        if (Math.abs(exoPlayer.currentPosition - currentPositionMs) > 120) {
             exoPlayer.seekTo(currentPositionMs)
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
     Box(
-        modifier = modifier
-            .background(Color.Black),
+        modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
@@ -82,4 +97,3 @@ fun VideoPreviewPlayer(
         )
     }
 }
-

@@ -16,6 +16,10 @@ target/
 **/*.rs.bk
 Cargo.lock
 
+# Build artifacts & APKs
+build-artifacts/
+*.apk
+
 # Operating System
 Thumbs.db
 *.bak

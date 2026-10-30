@@ -66,7 +66,15 @@ flowchart TD
    - Supports dedicated tracks for primary video, background audio, voiceovers, picture-in-picture (PiP) overlays, and subtitles.
 4. **200% Audio Booster with Soft Limiter**:
    - Boost whisper-quiet clips up to 200% without digital clipping or harsh distortion using a hyperbolic tangent (`tanh`) soft-knee limiter.
-5. **100% Offline & F-Droid Ready**:
+5. **Light Mode, Dark Mode & Pure Black (OLED Mode)**:
+   - Built-in dynamic theme switcher supporting clean modern Light Mode, Material 3 Dark Mode, and True Black (`#000000`) OLED Mode for maximum battery conservation and contrast.
+6. **Undo & Redo History**:
+   - Comprehensive multi-level history stack allowing instant undo ($\curvearrowleft$) and redo ($\curvearrowright$) for splits, cuts, trims, deletions, and filter adjustments.
+7. **Text & Subtitle Overlays**:
+   - Add text captions, titles, or subtitles directly on video clips with customizable text and font sizes.
+8. **Magnetic Snapping & Smooth Scrubber**:
+   - Timeline features frame-accurate magnetic snapping to clip cut-points and boundaries.
+9. **100% Offline & F-Droid Ready**:
    - Zero internet permissions requested in `AndroidManifest.xml`.
    - Zero trackers, zero analytics, zero ads, zero watermarks.
    - Includes reproducible build recipe for F-Droid (`fdroid/metadata/com.librecuts.rust.yml`).
