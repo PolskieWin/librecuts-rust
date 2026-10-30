@@ -14,7 +14,7 @@ object FileUtils {
 
     suspend fun resolveMediaUriToLocalFile(context: Context, uri: Uri): Pair<String, Long> = withContext(Dispatchers.IO) {
         val scheme = uri.scheme
-        val localFilePath: String
+        var localFilePath: String
         var durationMs = 15_000L
 
         if (scheme == "file") {
