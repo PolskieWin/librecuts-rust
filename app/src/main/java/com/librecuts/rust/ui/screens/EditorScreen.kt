@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Extension
@@ -70,6 +71,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -80,6 +82,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,7 +144,7 @@ fun EditorScreen(
     val exportState by exportManager.exportState.collectAsState()
 
     var isPlaying by remember { mutableStateOf(false) }
-    var currentPositionMs by remember { mutableLongStateOf(0L) }
+    var currentPositionMs by remember(project.id) { mutableLongStateOf(project.lastPlayheadMs) }
     var selectedClipId by remember { mutableStateOf<String?>(null) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showCompressDialog by remember { mutableStateOf(false) }
@@ -174,11 +179,38 @@ fun EditorScreen(
     val undoStack = remember { mutableStateListOf<Composition>() }
     val redoStack = remember { mutableStateListOf<Composition>() }
 
+    // Instant save when backgrounded so progress is NEVER lost
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                isPlaying = false
+                onSaveProject(
+                    project.copy(
+                        composition = composition,
+                        timeSpentSeconds = projectTimeSpentSeconds,
+                        lastPlayheadMs = currentPositionMs
+                    )
+                )
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     fun updateCompositionWithUndo(newComp: Composition) {
         undoStack.add(composition)
         redoStack.clear()
         composition = newComp
-        onSaveProject(project.copy(composition = newComp, timeSpentSeconds = projectTimeSpentSeconds))
+        onSaveProject(
+            project.copy(
+                composition = newComp,
+                timeSpentSeconds = projectTimeSpentSeconds,
+                lastPlayheadMs = currentPositionMs
+            )
+        )
     }
 
     // Image Import Picker Contract
@@ -675,21 +707,27 @@ fun EditorScreen(
                     )
                 }
 
+                // Auto-detect clip under playhead if none explicitly tapped
+                val activeTargetClip = selectedClip ?: composition.tracks
+                    .flatMap { it.clips }
+                    .find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Split at Playhead
+                    // Split at Playhead (Cut clip in two)
                     IconButton(
                         onClick = {
-                            selectedClip?.let { clip ->
-                                val splitOffset = currentPositionMs - clip.timeline_start_ms
-                                if (splitOffset in 100 until clip.durationMs) {
+                            activeTargetClip?.let { clip ->
+                                val splitTimelineOffset = currentPositionMs - clip.timeline_start_ms
+                                val splitSourceOffset = (splitTimelineOffset * clip.speed).toLong()
+                                if (splitTimelineOffset in 50 until clip.durationMs) {
                                     haptics.split()
                                     val firstHalf = clip.copy(
                                         id = UUID.randomUUID().toString(),
-                                        source_end_ms = clip.source_start_ms + splitOffset
+                                        source_end_ms = clip.source_start_ms + splitSourceOffset
                                     )
                                     val secondHalf = clip.copy(
                                         id = UUID.randomUUID().toString(),
-                                        source_start_ms = clip.source_start_ms + splitOffset,
+                                        source_start_ms = clip.source_start_ms + splitSourceOffset,
                                         timeline_start_ms = currentPositionMs
                                     )
 
@@ -700,15 +738,48 @@ fun EditorScreen(
                                     }
                                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                                     selectedClipId = secondHalf.id
+                                    Toast.makeText(context, "Cut clip at ${(currentPositionMs / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
-                        enabled = selectedClip != null
+                        enabled = activeTargetClip != null
                     ) {
                         Icon(
                             Icons.Default.CallSplit,
                             contentDescription = strings.split,
-                            tint = if (selectedClip != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            tint = if (activeTargetClip != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+
+                    // Trim Start (Cut Left - trim off beginning of clip)
+                    IconButton(
+                        onClick = {
+                            activeTargetClip?.let { clip ->
+                                val splitTimelineOffset = currentPositionMs - clip.timeline_start_ms
+                                val splitSourceOffset = (splitTimelineOffset * clip.speed).toLong()
+                                if (splitTimelineOffset in 50 until clip.durationMs) {
+                                    haptics.split()
+                                    val trimmed = clip.copy(
+                                        source_start_ms = clip.source_start_ms + splitSourceOffset,
+                                        timeline_start_ms = currentPositionMs
+                                    )
+                                    val updatedTracks = composition.tracks.map { track ->
+                                        track.copy(clips = track.clips.map {
+                                            if (it.id == clip.id) trimmed else it
+                                        })
+                                    }
+                                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                                    selectedClipId = trimmed.id
+                                    Toast.makeText(context, "Trimmed start of clip", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = activeTargetClip != null && (currentPositionMs > (activeTargetClip.timeline_start_ms + 50))
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCut,
+                            contentDescription = "Cut Start",
+                            tint = if (activeTargetClip != null && (currentPositionMs > (activeTargetClip.timeline_start_ms + 50))) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
 

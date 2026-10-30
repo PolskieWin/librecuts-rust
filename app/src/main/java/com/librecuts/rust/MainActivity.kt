@@ -1,5 +1,6 @@
 package com.librecuts.rust
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,13 +41,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val prefs = remember { getSharedPreferences("librecut_prefs", Context.MODE_PRIVATE) }
+            val projectRepo = remember { ProjectRepository(this) }
+            val scope = rememberCoroutineScope()
+
             var currentScreen by remember { mutableStateOf(MainScreen.PROJECTS) }
             var themeMode by remember { mutableStateOf(AppThemeMode.PURE_BLACK) }
             var appLanguage by remember { mutableStateOf(AppLanguage.ENGLISH) }
             var isTimeTrackerEnabled by remember { mutableStateOf(false) }
             var activeProject by remember { mutableStateOf<Project?>(null) }
-            val projectRepo = remember { ProjectRepository(this) }
-            val scope = rememberCoroutineScope()
+
+            // Restore last active editing project seamlessly from background
+            LaunchedEffect(Unit) {
+                val savedProjectId = prefs.getString("last_active_project_id", null)
+                if (!savedProjectId.isNullOrEmpty()) {
+                    val restored = projectRepo.getProject(savedProjectId)
+                    if (restored != null) {
+                        activeProject = restored
+                        currentScreen = MainScreen.EDITOR
+                    }
+                }
+            }
 
             val currentStrings = remember(appLanguage) { getAppStrings(appLanguage) }
 
@@ -81,6 +97,7 @@ class MainActivity : ComponentActivity() {
                                     onOpenProject = { project ->
                                         activeProject = project
                                         currentScreen = MainScreen.EDITOR
+                                        prefs.edit().putString("last_active_project_id", project.id).apply()
                                     },
                                     onOpenSettings = {
                                         currentScreen = MainScreen.SETTINGS
@@ -91,6 +108,7 @@ class MainActivity : ComponentActivity() {
                                 val project = activeProject
                                 if (project != null) {
                                     BackHandler {
+                                        prefs.edit().remove("last_active_project_id").apply()
                                         currentScreen = MainScreen.PROJECTS
                                     }
                                     EditorScreen(
@@ -102,9 +120,11 @@ class MainActivity : ComponentActivity() {
                                             scope.launch {
                                                 projectRepo.saveProject(updatedProject)
                                                 activeProject = updatedProject
+                                                prefs.edit().putString("last_active_project_id", updatedProject.id).apply()
                                             }
                                         },
                                         onBackToProjects = {
+                                            prefs.edit().remove("last_active_project_id").apply()
                                             currentScreen = MainScreen.PROJECTS
                                         }
                                     )

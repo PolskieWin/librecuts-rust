@@ -53,23 +53,23 @@ jobs:
 
       - name: Prepare APK Variants
         run: |
-          mkdir -p release-apks
+          mkdir -p "${GITHUB_WORKSPACE}/release-apks"
           cd app/build/outputs/apk/release/
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-universal.apk
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-arm64-v8a.apk
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-armeabi-v7a.apk
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" ../../../../release-apks/LibreCut-RS-v2.4.0-x86_64.apk
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.0-x86_64.apk"
             else
-              cp "$f" ../../../../release-apks/"$f"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
           done
-          cd ../../../../release-apks
+          cd "${GITHUB_WORKSPACE}/release-apks"
           ls -lh
 
       - name: Upload Release APKs

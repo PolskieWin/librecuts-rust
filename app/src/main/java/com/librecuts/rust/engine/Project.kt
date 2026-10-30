@@ -19,6 +19,7 @@ data class Project(
     val lastModifiedAt: Long = System.currentTimeMillis(),
     val aspectRatio: String = "16:9", // "16:9", "9:16", "1:1", "4:5"
     val timeSpentSeconds: Long = 0L,
+    val lastPlayheadMs: Long = 0L,
     val composition: Composition
 ) {
     val formattedLastModified: String
