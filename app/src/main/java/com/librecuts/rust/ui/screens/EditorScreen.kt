@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.ColorLens
@@ -71,11 +72,16 @@ import com.librecuts.rust.ui.theme.AppThemeMode
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+import com.librecuts.rust.engine.Project
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
+    project: Project,
     currentTheme: AppThemeMode,
-    onThemeChanged: (AppThemeMode) -> Unit
+    onThemeChanged: (AppThemeMode) -> Unit,
+    onSaveProject: (Project) -> Unit,
+    onBackToProjects: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -89,17 +95,9 @@ fun EditorScreen(
     var showEffectsSheet by remember { mutableStateOf(false) }
     var showThemeMenu by remember { mutableStateOf(false) }
 
-    // Multi-track composition state with Undo / Redo history
-    var composition by remember {
-        mutableStateOf(
-            Composition(
-                tracks = listOf(
-                    Track(id = "track_video", track_type = TrackType.Video),
-                    Track(id = "track_audio", track_type = TrackType.Audio),
-                    Track(id = "track_overlay", track_type = TrackType.Overlay)
-                )
-            )
-        )
+    // Multi-track composition state loaded directly from the project
+    var composition by remember(project.id) {
+        mutableStateOf(project.composition)
     }
 
     val undoStack = remember { mutableStateListOf<Composition>() }
@@ -109,6 +107,7 @@ fun EditorScreen(
         undoStack.add(composition)
         redoStack.clear()
         composition = newComp
+        onSaveProject(project.copy(composition = newComp))
     }
 
     // Modern Android 14+ Photo & Video Picker contract with local cached path resolution
@@ -147,11 +146,21 @@ fun EditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBackToProjects) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back to Projects",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
                 title = {
                     Text(
-                        text = "LibreCut RS",
+                        text = project.title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
