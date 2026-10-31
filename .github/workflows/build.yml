@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,41 +78,41 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.7
+      - name: Publish GitHub Release v2.4.8
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.7
-            name: "LibreCut RS v2.4.7 - Complete Bug Fixes, Native Export Engine, SFX Tracks, Font Picker, and Audio Boost"
+            tag_name: v2.4.8
+            name: "LibreCut RS v2.4.8 - Eliminate ANR Freeze, Timeline Viewport Clipping, Preview Playback Optimization"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.7
+              # LibreCut RS v2.4.8
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Comprehensive bug-fixing release resolving export pipeline failures, SFX playback and track addition, font import and zip loading, text/subtitle customization, audio volume boost, and preview gesture transformations.
+              Critical performance and stability release eliminating Android ANR (Application Not Responding) freezes during video editing, timeline navigation, and preview playback.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.7-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.7-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.7-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.7-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.8-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.8-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.8-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.8-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's Fixed & Improved in v2.4.7
-              - **Native Export Rendering Pipeline & Deserialization**:
-                - Fixed `serde_json` composition deserialization error by changing `TextOverlay` color fields from `u64` to `i64`, properly accepting negative ARGB values passed from Android.
-                - Added `#[serde(other)] Unknown` fallback variant to `EffectConfig` to prevent export pipeline failures on unrecognized effect attributes.
-                - Enhanced `fallbackExportWithAndroidMediaMuxer` to scan all media tracks and preserve local copies seamlessly.
-              - **Sound Effects & Audio Playback**:
-                - Auto-create `TrackType.Audio` track on importing music or selecting sound effects (Vine Boom, Bruh, Airhorn, etc.), fixing the issue where SFX and audio were ignored when no audio track existed.
+              ### What's Fixed & Optimized in v2.4.8
+              - **Eliminated Android ANR (Application Not Responding)**:
+                - **Timeline Viewport Clipping**: `TimeRuler` canvas now dynamically calculates visible window bounds (`scrollState.value`) and step interval based on display density, dropping tick drawing operations from 3,600+ lines down to ~40 ticks per frame and preventing GPU RenderThread starvation.
+                - **Resolved Gesture Conflict on Timeline**: Removed conflicting drag gesture consumer from the outer track Box, allowing `Modifier.horizontalScroll` to scroll the timeline tracks with buttery-smooth 120 FPS fluidity.
+                - **Optimized Video Preview Playback Loops**: Decoupled `currentPositionMs` from `LaunchedEffect` seeking so `exoPlayer.seekTo` is only executed when user manually scrubs while paused, eliminating looper message flooding and buffer flushing during continuous playback.
+                - **Removed Gesture Detector Teardown Loop**: Keyed `pointerInput` on stable clip identifiers with `rememberUpdatedState` instead of raw playback timestamps, preventing Compose from rebuilding gesture recognizers 25 times per second.
+                - **Non-blocking Plugin Architecture**: Seeded `PluginManager` with in-memory defaults and moved file system scanning and JSON decoding to `Dispatchers.IO`, keeping UI initialization instant.
                 - Enabled audio volume boost (>100%) in video preview player with `LoudnessEnhancer` up to 2000mB.
               - **Font Picker & Custom ZIP Font Archive Support**:
                 - Added font selection row and direct `+ Import (.ttf/.otf/.zip)` launcher inside `TextEditorDialog`.

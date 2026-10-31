@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -233,12 +234,10 @@ fun VideoPreviewPlayer(
         }
     }
 
-    LaunchedEffect(isPlaying, activeAudioClip, currentPositionMs) {
+    LaunchedEffect(isPlaying, activeAudioClip?.id) {
         if (isPlaying && activeAudioClip != null) {
             val offset = (currentPositionMs - activeAudioClip.timeline_start_ms + activeAudioClip.source_start_ms).coerceAtLeast(0L)
-            if (Math.abs(audioPlayer.currentPosition - offset) > 150) {
-                audioPlayer.seekTo(offset)
-            }
+            audioPlayer.seekTo(offset)
             val vol = if (activeAudioClip.muted) 0f else activeAudioClip.volume.coerceIn(0f, 1f)
             audioPlayer.volume = vol
             audioPlayer.play()
@@ -252,11 +251,17 @@ fun VideoPreviewPlayer(
         if (isPlaying) {
             if (!isImageMedia) exoPlayer.play()
             var simulatedPos = currentPositionMs
+            val maxDur = activeClip?.durationMs ?: 5000L
             while (isActive) {
                 if (!isImageMedia) {
                     onPositionChanged(exoPlayer.currentPosition)
                 } else {
                     simulatedPos += 40L
+                    if (simulatedPos >= maxDur) {
+                        onPositionChanged(maxDur)
+                        onPlaybackEnded()
+                        break
+                    }
                     onPositionChanged(simulatedPos)
                 }
                 delay(40)
@@ -266,21 +271,28 @@ fun VideoPreviewPlayer(
         }
     }
 
-    // Scrubbing synchronization
-    LaunchedEffect(currentPositionMs, isImageMedia) {
-        if (!isImageMedia && Math.abs(exoPlayer.currentPosition - currentPositionMs) > 120) {
-            exoPlayer.seekTo(currentPositionMs)
+    // Scrubbing synchronization - ONLY seek when paused to avoid starving playback thread
+    LaunchedEffect(currentPositionMs, isImageMedia, isPlaying) {
+        if (!isPlaying && !isImageMedia) {
+            if (Math.abs(exoPlayer.currentPosition - currentPositionMs) > 60) {
+                exoPlayer.seekTo(currentPositionMs)
+            }
         }
     }
 
     // Dynamic Speed & Speed Ramp Control (Clip Adjustments)
     val clipElapsedMs = (currentPositionMs - (activeClip?.timeline_start_ms ?: 0L)).coerceAtLeast(0L)
-    LaunchedEffect(activeClip?.speed, activeClip?.speedCurve, currentPositionMs, isPlaying) {
+    val hasActiveSpeedCurve = activeClip?.speedCurve != null && activeClip.speedCurve != com.librecuts.rust.engine.SpeedCurveType.NORMAL
+    LaunchedEffect(
+        activeClip?.speed,
+        activeClip?.speedCurve,
+        if (hasActiveSpeedCurve) currentPositionMs else Unit
+    ) {
         if (!isImageMedia) {
             val baseSpeed = (activeClip?.speed ?: 1.0f).coerceIn(0.25f, 4.0f)
-            val effectiveSpeed = if (activeClip?.speedCurve != null && activeClip.speedCurve != com.librecuts.rust.engine.SpeedCurveType.NORMAL && (activeClip.durationMs) > 0) {
-                val clipProgress = (clipElapsedMs.toFloat() / activeClip.durationMs).coerceIn(0f, 1f)
-                when (activeClip.speedCurve) {
+            val effectiveSpeed = if (hasActiveSpeedCurve && (activeClip?.durationMs ?: 0L) > 0) {
+                val clipProgress = (clipElapsedMs.toFloat() / (activeClip?.durationMs ?: 1L)).coerceIn(0f, 1f)
+                when (activeClip?.speedCurve) {
                     com.librecuts.rust.engine.SpeedCurveType.MONTAGE -> {
                         if (clipProgress in 0.35f..0.65f) 0.5f else 2.0f
                     }
@@ -569,27 +581,32 @@ fun VideoPreviewPlayer(
         return
     }
 
+    val currentKfTransformState by rememberUpdatedState(currentKfTransform)
+    val currentClipElapsedMsState by rememberUpdatedState(clipElapsedMs)
+
     Box(
         modifier = modifier
             .background(Color.Black)
-            .pointerInput(activeClip?.id, clipElapsedMs) {
+            .pointerInput(activeClip?.id) {
                 detectTransformGestures { _, pan, zoom, rotation ->
-                    val newX = currentKfTransform.x + pan.x
-                    val newY = currentKfTransform.y + pan.y
-                    val newScale = (currentKfTransform.scale * zoom).coerceIn(0.2f, 5.0f)
-                    val newRot = currentKfTransform.rotation + rotation
+                    val kf = currentKfTransformState
+                    val elapsedMs = currentClipElapsedMsState
+                    val newX = kf.x + pan.x
+                    val newY = kf.y + pan.y
+                    val newScale = (kf.scale * zoom).coerceIn(0.2f, 5.0f)
+                    val newRot = kf.rotation + rotation
 
                     // CapCut behavior: automatically create or update keyframe at current playhead timestamp!
                     activeClip?.let { clip ->
                         onKeyframeUpdated?.invoke(
                             clip.id,
                             Keyframe(
-                                timeMs = clipElapsedMs,
+                                timeMs = elapsedMs,
                                 x = newX,
                                 y = newY,
                                 scale = newScale,
                                 rotation = newRot,
-                                opacity = currentKfTransform.opacity
+                                opacity = kf.opacity
                             )
                         )
                     }

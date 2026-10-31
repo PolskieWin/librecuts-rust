@@ -52,6 +52,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,11 +80,15 @@ fun TimelineView(
 ) {
     val haptics = rememberHapticHelper()
     val strings = LocalAppStrings.current
-    var zoomScale by remember { mutableFloatStateOf(0.05f) } // pixels per millisecond
-    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
 
     val totalDurationMs = composition.totalDurationMs.coerceAtLeast(10_000L)
-    val totalWidthDp = ((totalDurationMs * zoomScale)).coerceAtLeast(300f).dp
+    val defaultScale = if (totalDurationMs > 600_000L) (15_000f / totalDurationMs).coerceIn(0.005f, 0.05f) else 0.05f
+    var zoomScale by remember(totalDurationMs) { mutableFloatStateOf(defaultScale) } // dp per millisecond
+    val scrollState = rememberScrollState()
+
+    val pxPerMs = with(density) { zoomScale.dp.toPx() }
+    val totalWidthDp = ((totalDurationMs * zoomScale)).coerceIn(300f, 20_000f).dp
 
     // Magnetic Snapping Points: 0, and clip starts/ends
     val snapPoints = remember(composition) {
@@ -114,8 +119,9 @@ fun TimelineView(
         }
     }
 
+    val minScale = (600f / totalDurationMs).coerceIn(0.001f, 0.05f)
     val transformState = rememberTransformableState { zoomChange, _, _ ->
-        zoomScale = (zoomScale * zoomChange).coerceIn(0.01f, 0.5f)
+        zoomScale = (zoomScale * zoomChange).coerceIn(minScale, 0.35f)
     }
 
     Row(
@@ -131,6 +137,7 @@ fun TimelineView(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
         ) {
             // Three-Lines Jog Scrubber Handle by the Left Space
+            val currentPosSnapState by rememberUpdatedState(currentPositionMs)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -140,7 +147,7 @@ fun TimelineView(
                         detectDragGestures { change, dragAmount ->
                             change.consume()
                             val deltaMs = (dragAmount.x * 20L + dragAmount.y * 10L).toLong()
-                            val newMs = (currentPositionMs + deltaMs).coerceIn(0L, totalDurationMs)
+                            val newMs = (currentPosSnapState + deltaMs).coerceIn(0L, totalDurationMs)
                             onSeekPosition(applySnap(newMs))
                         }
                     },
@@ -202,17 +209,12 @@ fun TimelineView(
                 .fillMaxHeight()
                 .transformable(state = transformState)
                 .horizontalScroll(scrollState)
-                .pointerInput(totalDurationMs) {
+                .pointerInput(totalDurationMs, pxPerMs) {
                     detectTapGestures { offset ->
-                        val clickedTimeMs = (offset.x / zoomScale).toLong()
-                        onSeekPosition(applySnap(clickedTimeMs))
-                    }
-                }
-                .pointerInput(totalDurationMs) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
-                        val draggedTimeMs = (change.position.x / zoomScale).toLong()
-                        onSeekPosition(applySnap(draggedTimeMs))
+                        if (pxPerMs > 0f) {
+                            val clickedTimeMs = (offset.x / pxPerMs).toLong().coerceIn(0L, totalDurationMs)
+                            onSeekPosition(applySnap(clickedTimeMs))
+                        }
                     }
                 }
         ) {
@@ -221,10 +223,12 @@ fun TimelineView(
                     .width(totalWidthDp)
                     .fillMaxSize()
             ) {
-                // Time Ruler
+                // High-performance Viewport-Clipped Time Ruler
                 TimeRuler(
                     durationMs = totalDurationMs,
                     scale = zoomScale,
+                    scrollOffsetPx = scrollState.value,
+                    onSeek = { ms -> onSeekPosition(applySnap(ms)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(28.dp)
@@ -255,18 +259,22 @@ fun TimelineView(
                         .fillMaxWidth()
                         .weight(1f)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
-                        .pointerInput(totalDurationMs, zoomScale) {
+                        .pointerInput(totalDurationMs, pxPerMs) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
-                                val deltaMs = (dragAmount.x / zoomScale).toLong()
-                                val newPos = (currentPosState + deltaMs).coerceIn(0L, totalDurationMs)
-                                onSeekPosition(applySnap(newPos))
+                                if (pxPerMs > 0f) {
+                                    val deltaMs = (dragAmount.x / pxPerMs).toLong()
+                                    val newPos = (currentPosState + deltaMs).coerceIn(0L, totalDurationMs)
+                                    onSeekPosition(applySnap(newPos))
+                                }
                             }
                         }
-                        .pointerInput(totalDurationMs, zoomScale) {
+                        .pointerInput(totalDurationMs, pxPerMs) {
                             detectTapGestures { offset ->
-                                val clickedTimeMs = ((offset.x + scrollState.value) / zoomScale).toLong().coerceIn(0L, totalDurationMs)
-                                onSeekPosition(applySnap(clickedTimeMs))
+                                if (pxPerMs > 0f) {
+                                    val clickedTimeMs = ((offset.x + scrollState.value) / pxPerMs).toLong().coerceIn(0L, totalDurationMs)
+                                    onSeekPosition(applySnap(clickedTimeMs))
+                                }
                             }
                         }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -298,11 +306,22 @@ fun TimelineView(
             val ms = currentPositionMs % 1000
             val timecodeStr = String.format("%02d:%02d.%03d", min, sec, ms)
 
+            val playheadPosState by rememberUpdatedState(currentPositionMs)
             Box(
                 modifier = Modifier
                     .offset(x = playheadOffsetDp - 28.dp)
                     .width(56.dp)
                     .fillMaxHeight()
+                    .pointerInput(totalDurationMs, pxPerMs) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            if (pxPerMs > 0f) {
+                                val deltaMs = (dragAmount.x / pxPerMs).toLong()
+                                val newPos = (playheadPosState + deltaMs).coerceIn(0L, totalDurationMs)
+                                onSeekPosition(applySnap(newPos))
+                            }
+                        }
+                    }
             ) {
                 // Floating timestamp bubble above playhead
                 val playheadColor = MaterialTheme.colorScheme.primary
@@ -357,25 +376,63 @@ fun TimelineView(
 private fun TimeRuler(
     durationMs: Long,
     scale: Float,
+    scrollOffsetPx: Int,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     val subTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+    val density = LocalDensity.current
+    val pxPerMs = with(density) { scale.dp.toPx() }
 
-    Canvas(modifier = modifier) {
-        val stepMs = 1000L
-        var currentMs = 0L
+    Canvas(
+        modifier = modifier
+            .pointerInput(durationMs, pxPerMs) {
+                detectTapGestures { offset ->
+                    if (pxPerMs > 0f) {
+                        val clickedMs = (offset.x / pxPerMs).toLong().coerceIn(0L, durationMs)
+                        onSeek(clickedMs)
+                    }
+                }
+            }
+            .pointerInput(durationMs, pxPerMs) {
+                detectDragGestures { change, _ ->
+                    change.consume()
+                    if (pxPerMs > 0f) {
+                        val draggedMs = (change.position.x / pxPerMs).toLong().coerceIn(0L, durationMs)
+                        onSeek(draggedMs)
+                    }
+                }
+            }
+    ) {
+        if (pxPerMs <= 0f) return@Canvas
 
-        while (currentMs <= durationMs) {
-            val x = currentMs * scale
-            val isMajor = currentMs % 5000L == 0L
-            val tickHeight = if (isMajor) 14f else 7f
+        val stepMs = when {
+            pxPerMs >= 0.2f -> 500L
+            pxPerMs >= 0.08f -> 1000L
+            pxPerMs >= 0.03f -> 2000L
+            pxPerMs >= 0.01f -> 5000L
+            else -> 10000L
+        }
+
+        // Clip tick drawing strictly to the visible window on screen (+ safe buffer)
+        val viewStartPx = (scrollOffsetPx - 150f).coerceAtLeast(0f)
+        val viewEndPx = scrollOffsetPx + 4000f
+
+        val startMs = ((viewStartPx / pxPerMs).toLong() / stepMs * stepMs).coerceAtLeast(0L)
+        val endMs = (((viewEndPx / pxPerMs).toLong() / stepMs + 1) * stepMs).coerceAtMost(durationMs)
+
+        var currentMs = startMs
+        while (currentMs <= endMs) {
+            val x = currentMs * pxPerMs
+            val isMajor = currentMs % (stepMs * 5) == 0L
+            val tickHeight = if (isMajor) 14.dp.toPx() else 7.dp.toPx()
 
             drawLine(
                 color = if (isMajor) tickColor else subTickColor,
                 start = Offset(x, size.height - tickHeight),
                 end = Offset(x, size.height),
-                strokeWidth = 2f
+                strokeWidth = if (isMajor) 2.dp.toPx() else 1.dp.toPx()
             )
             currentMs += stepMs
         }

@@ -101,6 +101,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -973,32 +974,37 @@ fun EditorScreen(
                     }
 
                     ovBitmap?.let { bmp ->
+                        val currentOvKfState by rememberUpdatedState(currentKf)
+                        val currentClipOffsetMsState by rememberUpdatedState(clipOffsetMs)
+
                         Box(
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .pointerInput(ovClip.id, clipOffsetMs) {
+                                .pointerInput(ovClip.id) {
                                     detectTransformGestures { _, pan, zoom, rotation ->
                                         ovPanX += pan.x
                                         ovPanY += pan.y
                                         ovScale = (ovScale * zoom).coerceIn(0.15f, 4.0f)
                                         ovRot += rotation
 
+                                        val offsetMs = currentClipOffsetMsState
+                                        val kf = currentOvKfState
                                         // Auto-create/update keyframe at current playhead (CapCut style)
                                         val updatedKf = Keyframe(
-                                            timeMs = clipOffsetMs,
-                                            x = currentKf.x + ovPanX,
-                                            y = currentKf.y + ovPanY,
-                                            scale = (currentKf.scale * ovScale).coerceIn(0.1f, 4f),
-                                            rotation = currentKf.rotation + ovRot,
-                                            opacity = currentKf.opacity
+                                            timeMs = offsetMs,
+                                            x = kf.x + ovPanX,
+                                            y = kf.y + ovPanY,
+                                            scale = (kf.scale * ovScale).coerceIn(0.1f, 4f),
+                                            rotation = kf.rotation + ovRot,
+                                            opacity = kf.opacity
                                         )
-                                        val updatedKfs = (ovClip.keyframes.filterNot { Math.abs(it.timeMs - clipOffsetMs) < 120L } + updatedKf).sortedBy { it.timeMs }
+                                        val updatedKfs = (ovClip.keyframes.filterNot { Math.abs(it.timeMs - offsetMs) < 120L } + updatedKf).sortedBy { it.timeMs }
                                         val newTracks = composition.tracks.map { trk ->
                                             if (trk.track_type == TrackType.Overlay) {
                                                 trk.copy(clips = trk.clips.map { if (it.id == ovClip.id) it.copy(keyframes = updatedKfs) else it })
                                             } else trk
                                         }
-                                        updateCompositionWithUndo(composition.copy(tracks = newTracks))
+                                        composition = composition.copy(tracks = newTracks)
                                     }
                                 }
                                 .graphicsLayer {
