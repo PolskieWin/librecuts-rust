@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -247,6 +248,7 @@ fun TimelineView(
                 }
 
                 // Down Free Space: Move Through Timestamps by dragging in bottom free space
+                val currentPosState by rememberUpdatedState(currentPositionMs)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -256,13 +258,13 @@ fun TimelineView(
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 val deltaMs = (dragAmount.x / zoomScale).toLong()
-                                val newPos = (currentPositionMs + deltaMs).coerceIn(0L, totalDurationMs)
+                                val newPos = (currentPosState + deltaMs).coerceIn(0L, totalDurationMs)
                                 onSeekPosition(applySnap(newPos))
                             }
                         }
                         .pointerInput(totalDurationMs, zoomScale) {
                             detectTapGestures { offset ->
-                                val clickedTimeMs = (offset.x / zoomScale).toLong()
+                                val clickedTimeMs = ((offset.x + scrollState.value) / zoomScale).toLong().coerceIn(0L, totalDurationMs)
                                 onSeekPosition(applySnap(clickedTimeMs))
                             }
                         }
@@ -280,7 +282,7 @@ fun TimelineView(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Scrub timestamps",
+                            text = strings.scrubTimestamps,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -456,10 +458,11 @@ private fun TrackRow(
                     )
                 }
 
-                // Show Transition Badge at start timestamp (clamped to clip duration)
+                // Show Transition Badge at start timestamp (clamped to clip duration, smaller but not bigger)
                 if (clip.transition != TransitionType.None) {
+                    val clipWidthDp = (clip.durationMs * scale).dp
                     val transDur = clip.transitionDurationMs.coerceIn(100L, clip.durationMs)
-                    val transWidthDp = (transDur * scale).coerceAtLeast(16f).dp
+                    val transWidthDp = ((transDur * scale).dp).coerceIn(12.dp, clipWidthDp)
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
@@ -491,10 +494,11 @@ private fun TrackRow(
                     }
                 }
 
-                // Show Animation Badge at timestamp (clamped to clip duration)
+                // Show Animation Badge at timestamp (clamped to clip duration, smaller but not bigger)
                 if (clip.animation != AnimationType.None) {
-                    val animDur = 600L.coerceAtMost(clip.durationMs)
-                    val animWidthDp = (animDur * scale).coerceAtLeast(16f).dp
+                    val clipWidthDp = (clip.durationMs * scale).dp
+                    val animDur = clip.animationDurationMs.coerceIn(100L, clip.durationMs)
+                    val animWidthDp = ((animDur * scale).dp).coerceIn(12.dp, clipWidthDp)
                     val isOutAnim = clip.animation.category == "Out"
                     Box(
                         modifier = Modifier

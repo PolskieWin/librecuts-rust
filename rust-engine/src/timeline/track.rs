@@ -96,13 +96,13 @@ pub enum EffectConfig {
         #[serde(default)]
         y: f32,
         #[serde(default = "default_color_rgba")]
-        color_rgba: u64,
+        color_rgba: i64,
         #[serde(default)]
         custom_font_path: Option<String>,
         #[serde(default)]
         stroke_width: f32,
         #[serde(default = "default_stroke_color_rgba")]
-        stroke_color_rgba: u64,
+        stroke_color_rgba: i64,
     },
     #[serde(alias = "ShapeMask")]
     ShapeMask {
@@ -130,14 +130,16 @@ pub enum EffectConfig {
         #[serde(default)]
         invert: bool,
     },
+    #[serde(other)]
+    Unknown,
 }
 
 fn default_similarity() -> f32 { 0.35 }
 fn default_smoothness() -> f32 { 0.1 }
 fn default_despill() -> f32 { 0.5 }
 fn default_font_size() -> f32 { 24.0 }
-fn default_color_rgba() -> u64 { 0xFFFFFFFF }
-fn default_stroke_color_rgba() -> u64 { 0xFF000000 }
+fn default_color_rgba() -> i64 { -1 }
+fn default_stroke_color_rgba() -> i64 { -16777216 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Clip {

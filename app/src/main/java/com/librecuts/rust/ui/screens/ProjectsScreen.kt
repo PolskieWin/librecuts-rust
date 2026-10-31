@@ -316,6 +316,7 @@ fun ProjectsScreen(
                             height = height,
                             tracks = listOf(
                                 Track(id = "track_v1", track_type = TrackType.Video),
+                                Track(id = "track_ov1", track_type = TrackType.Overlay),
                                 Track(id = "track_a1", track_type = TrackType.Audio),
                                 Track(id = "track_t1", track_type = TrackType.Text)
                             )
@@ -485,7 +486,7 @@ fun ProjectCard(
                     Image(
                         bitmap = thumbnailBitmap!!.asImageBitmap(),
                         contentDescription = project.title,
-                        contentScale = ContentScale.Fit,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {

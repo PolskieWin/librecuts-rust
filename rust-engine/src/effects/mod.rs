@@ -101,6 +101,7 @@ pub fn apply_effect_chain(rgba_buffer: &mut [u8], width: u32, height: u32, effec
                     *invert,
                 );
             }
+            _ => {}
         }
     }
 }

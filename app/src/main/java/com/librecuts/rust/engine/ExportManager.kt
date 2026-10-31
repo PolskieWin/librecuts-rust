@@ -126,9 +126,9 @@ class ExportManager(private val context: Context) {
         outputFile: File
     ): Boolean {
         val videoClip = composition.tracks
-            .firstOrNull { it.track_type == TrackType.Video }
-            ?.clips
-            ?.firstOrNull { File(it.file_path).exists() }
+            .filter { it.track_type == TrackType.Video || it.track_type == TrackType.Overlay }
+            .flatMap { it.clips }
+            .firstOrNull { File(it.file_path).exists() && File(it.file_path).length() > 0L }
             ?: return false
 
         return try {

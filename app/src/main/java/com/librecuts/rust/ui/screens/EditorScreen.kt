@@ -126,6 +126,10 @@ import com.librecuts.rust.engine.EffectConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FilterChip
 import com.librecuts.rust.engine.ExportManager
 import com.librecuts.rust.engine.FileUtils
 import com.librecuts.rust.engine.FontManager
@@ -371,7 +375,9 @@ fun EditorScreen(
                     source_end_ms = realDurationMs,
                     timeline_start_ms = currentPositionMs
                 )
-                val updatedTracks = composition.tracks.map { track ->
+                val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
+                val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio", track_type = TrackType.Audio)
+                val updatedTracks = baseTracks.map { track ->
                     if (track.track_type == TrackType.Audio) {
                         track.copy(clips = track.clips + audioClip)
                     } else track
@@ -395,7 +401,9 @@ fun EditorScreen(
                         val entries = SrtParser.parse(stream)
                         val textClips = SrtParser.toClips(entries)
                         if (textClips.isNotEmpty()) {
-                            val updatedTracks = composition.tracks.map { track ->
+                            val hasTextTrack = composition.tracks.any { t -> t.track_type == TrackType.Text }
+                            val baseTracks = if (hasTextTrack) composition.tracks else composition.tracks + Track(id = "track_text", track_type = TrackType.Text)
+                            val updatedTracks = baseTracks.map { track ->
                                 if (track.track_type == TrackType.Text) {
                                     track.copy(clips = track.clips + textClips)
                                 } else {
@@ -409,6 +417,24 @@ fun EditorScreen(
                     }
                 } catch (e: Exception) {
                     Toast.makeText(context, "Failed to parse .srt file", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Custom Font (.ttf / .otf / .zip) Picker
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val imported = fontManager.importFontFromUri(it)
+                if (imported != null) {
+                    editingTextFontPath = imported.path
+                    haptics.split()
+                    Toast.makeText(context, "Font loaded: ${imported.name}", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to import font (.ttf, .otf, .zip)", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -819,7 +845,7 @@ fun EditorScreen(
                                 } else c
                             })
                         }
-                        updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                        composition = composition.copy(tracks = updatedTracks)
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -1015,8 +1041,8 @@ fun EditorScreen(
                         fontManager.getFontFamily(textEff.custom_font_path)
                     }
 
-                    var textOffsetX by remember(activeTextClip.id) { mutableFloatStateOf(0f) }
-                    var textOffsetY by remember(activeTextClip.id) { mutableFloatStateOf(0f) }
+                    var textOffsetX by remember(activeTextClip.id) { mutableFloatStateOf(textEff.x) }
+                    var textOffsetY by remember(activeTextClip.id) { mutableFloatStateOf(textEff.y) }
                     var textScale by remember(activeTextClip.id) { mutableFloatStateOf(1f) }
 
                     Box(
@@ -1028,6 +1054,25 @@ fun EditorScreen(
                                     textOffsetX += pan.x
                                     textOffsetY += pan.y
                                     textScale = (textScale * zoom).coerceIn(0.5f, 3.5f)
+                                    val updatedTracks = composition.tracks.map { track ->
+                                        if (track.track_type == TrackType.Text) {
+                                            track.copy(clips = track.clips.map { c ->
+                                                if (c.id == activeTextClip.id) {
+                                                    val uEffects = c.effects.map { eff ->
+                                                        if (eff is EffectConfig.TextOverlay) {
+                                                            eff.copy(
+                                                                x = textOffsetX,
+                                                                y = textOffsetY,
+                                                                font_size = (eff.font_size * zoom).coerceIn(12f, 120f)
+                                                            )
+                                                        } else eff
+                                                    }
+                                                    c.copy(effects = uEffects)
+                                                } else c
+                                            })
+                                        } else track
+                                    }
+                                    composition = composition.copy(tracks = updatedTracks)
                                 }
                             }
                             .clip(RoundedCornerShape(8.dp))
@@ -1039,7 +1084,7 @@ fun EditorScreen(
                                 editingTextStrokeWidth = textEff.stroke_width
                                 editingTextStrokeColor = textEff.stroke_color_rgba
                                 editingTextFontPath = textEff.custom_font_path
-                                editingTextFontSize = textEff.font_size
+                                editingTextFontSize = (textEff.font_size * textScale).coerceIn(12f, 72f)
                                 showTextEditorDialog = true
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -1383,7 +1428,9 @@ fun EditorScreen(
                                         source_end_ms = result.durationMs,
                                         timeline_start_ms = currentPositionMs
                                     )
-                                    val updatedTracks = composition.tracks.map { track ->
+                                    val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
+                                    val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio", track_type = TrackType.Audio)
+                                    val updatedTracks = baseTracks.map { track ->
                                         if (track.track_type == TrackType.Audio) {
                                              track.copy(clips = track.clips + audioClip)
                                         } else track
@@ -1477,7 +1524,7 @@ fun EditorScreen(
         ) {
             EffectsSheet(
                 clip = selectedClip,
-                onUpdateClip = { newEffects, newSpeed, newSpeedCurve, newVolume, newTransition, newAnimation ->
+                onUpdateClip = { newEffects, newSpeed, newSpeedCurve, newVolume, newTransition, newTransDur, newAnimation, newAnimDur ->
                     val updatedTracks = composition.tracks.map { track ->
                         track.copy(clips = track.clips.map {
                             if (it.id == selectedClip.id) {
@@ -1487,7 +1534,9 @@ fun EditorScreen(
                                     speedCurve = newSpeedCurve,
                                     volume = newVolume,
                                     transition = newTransition,
-                                    animation = newAnimation
+                                    transitionDurationMs = newTransDur,
+                                    animation = newAnimation,
+                                    animationDurationMs = newAnimDur
                                 )
                             } else it
                         })
@@ -1516,7 +1565,9 @@ fun EditorScreen(
                     scope.launch {
                         val generatedClips = autoCaptionHelper.generateCaptionsForComposition(composition)
                         if (generatedClips.isNotEmpty()) {
-                            val updatedTracks = composition.tracks.map { track ->
+                            val hasTextTrack = composition.tracks.any { t -> t.track_type == TrackType.Text }
+                            val baseTracks = if (hasTextTrack) composition.tracks else composition.tracks + Track(id = "track_text", track_type = TrackType.Text)
+                            val updatedTracks = baseTracks.map { track ->
                                 if (track.track_type == TrackType.Text) {
                                     track.copy(clips = track.clips + generatedClips)
                                 } else track
@@ -1554,7 +1605,9 @@ fun EditorScreen(
                             )
                         )
                     )
-                    val updatedTracks = composition.tracks.map { track ->
+                    val hasTextTrack = composition.tracks.any { t -> t.track_type == TrackType.Text }
+                    val baseTracks = if (hasTextTrack) composition.tracks else composition.tracks + Track(id = "track_text", track_type = TrackType.Text)
+                    val updatedTracks = baseTracks.map { track ->
                         if (track.track_type == TrackType.Text) {
                             track.copy(clips = track.clips + textClip)
                         } else track
@@ -1588,7 +1641,9 @@ fun EditorScreen(
                         source_end_ms = (item.durationSec * 1000).toLong(),
                         timeline_start_ms = currentPositionMs
                     )
-                    val updatedTracks = composition.tracks.map { track ->
+                    val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
+                    val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio", track_type = TrackType.Audio)
+                    val updatedTracks = baseTracks.map { track ->
                         if (track.track_type == TrackType.Audio) track.copy(clips = track.clips + audioClip) else track
                     }
                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
@@ -1786,6 +1841,48 @@ fun EditorScreen(
                         onValueChange = { editingTextStrokeWidth = it },
                         valueRange = 0f..12f
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("${strings.fontSizeLabel}: ${editingTextFontSize.toInt()}sp", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Slider(
+                        value = editingTextFontSize,
+                        onValueChange = { editingTextFontSize = it },
+                        valueRange = 12f..72f
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(strings.fontLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    val availableFonts = remember { fontManager.getAvailableFonts() }
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        items(availableFonts) { fontOpt ->
+                            FilterChip(
+                                selected = (editingTextFontPath == fontOpt.path),
+                                onClick = {
+                                    haptics.tick()
+                                    editingTextFontPath = fontOpt.path
+                                },
+                                label = { Text(fontOpt.name, maxLines = 1, fontSize = 11.sp) }
+                            )
+                        }
+                        item {
+                            OutlinedButton(
+                                onClick = {
+                                    haptics.snap()
+                                    fontPickerLauncher.launch("*/*")
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(strings.importFont, fontSize = 11.sp)
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedButton(

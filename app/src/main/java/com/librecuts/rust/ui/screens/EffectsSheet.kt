@@ -93,7 +93,9 @@ fun EffectsSheet(
         speedCurve: SpeedCurveType,
         volume: Float,
         transition: TransitionType,
-        animation: AnimationType
+        transitionDurationMs: Long,
+        animation: AnimationType,
+        animationDurationMs: Long
     ) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -121,7 +123,9 @@ fun EffectsSheet(
     var speedCurve by remember(clip.id) { mutableStateOf(clip.speedCurve) }
     var volume by remember(clip.id) { mutableFloatStateOf(clip.volume) }
     var transition by remember(clip.id) { mutableStateOf(clip.transition) }
+    var transitionDurationMs by remember(clip.id) { mutableLongStateOf(clip.transitionDurationMs) }
     var animation by remember(clip.id) { mutableStateOf(clip.animation) }
+    var animationDurationMs by remember(clip.id) { mutableLongStateOf(clip.animationDurationMs) }
 
     // Background Removal (Auto Cutout without Green Screen)
     val existingBgRemoval = clip.effects.find { it is EffectConfig.BackgroundRemoval } as? EffectConfig.BackgroundRemoval
@@ -236,7 +240,7 @@ fun EffectsSheet(
                 )
             )
         }
-        onUpdateClip(newEffects, speed, speedCurve, volume, transition, animation)
+        onUpdateClip(newEffects, speed, speedCurve, volume, transition, transitionDurationMs, animation, animationDurationMs)
     }
 
     val fontPickerLauncher = rememberLauncherForActivityResult(
@@ -483,6 +487,20 @@ fun EffectsSheet(
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                 }
+
+                if (animation != AnimationType.None) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("${strings.animationDurationLabel}: ${animationDurationMs}ms", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Slider(
+                        value = animationDurationMs.toFloat(),
+                        onValueChange = {
+                            animationDurationMs = it.toLong()
+                            syncAll()
+                        },
+                        valueRange = 100f..clip.durationMs.coerceAtMost(1500L).toFloat().coerceAtLeast(101f),
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
 
             // TAB 2: Pre-made Transitions
@@ -491,6 +509,20 @@ fun EffectsSheet(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(strings.transitionDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(12.dp))
+
+                if (transition != TransitionType.None) {
+                    Text("${strings.transitionDurationLabel}: ${transitionDurationMs}ms", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Slider(
+                        value = transitionDurationMs.toFloat(),
+                        onValueChange = {
+                            transitionDurationMs = it.toLong()
+                            syncAll()
+                        },
+                        valueRange = 100f..clip.durationMs.coerceAtMost(1500L).toFloat().coerceAtLeast(101f),
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 TransitionType.values().forEach { trans ->
                     Card(

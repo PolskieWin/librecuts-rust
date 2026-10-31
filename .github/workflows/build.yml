@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.6-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.6-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.6-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.6-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.7-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,46 +78,57 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.6
+      - name: Publish GitHub Release v2.4.7
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.6
-            name: "LibreCut RS v2.4.6 - Full Polish & Spanish UI Localization & Language Persistence"
+            tag_name: v2.4.7
+            name: "LibreCut RS v2.4.7 - Complete Bug Fixes, Native Export Engine, SFX Tracks, Font Picker, and Audio Boost"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.6
+              # LibreCut RS v2.4.7
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Major feature and stability release introducing Motion Blur and creative effects, interactive Speed Curves and Keyframe Easing Graphs, estimated export completion time (ETA), text outline and color customization, video/photo/text resizing, bottom free-space timeline timestamp scrubbing, un-stretched project cards, timeline transition/animation markers, and a comprehensive Plugin Development Tutorial in the repository.
+              Comprehensive bug-fixing release resolving export pipeline failures, SFX playback and track addition, font import and zip loading, text/subtitle customization, audio volume boost, and preview gesture transformations.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.6-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.6-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.6-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.6-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.7-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.7-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.7-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.7-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's New & Fixed in v2.4.6
-              - **Language Persistence & Automatic System Locale Matching**:
-                - Saved language selection is now persisted to SharedPreferences so it never resets to English on app restart or activity recreation.
-                - First app launch automatically detects device system language (defaults to Polish for `pl`, Spanish for `es`, or English).
-              - **100% Polish & Spanish Localization Across All Sections**:
-                - All 7 Tabs in Effects Sheet (Adjust, Animations, Transitions, Speed & Curve, Crop, Mask, Text & Fonts).
-                - Bottom toolbars in all layout modes (CapCut Pro ribbon, Alight Motion ribbon, Standard ribbon).
-                - Pre-made transitions and clip animations (names and In/Out/Combo categories).
-                - Speed curve and ramping presets (Normal, Montage, Hero Moment, Bullet Time, Flash In).
-                - Creative filter catalog and intensity labels.
-                - Shape masks (Circle, Rectangle, Heart, Linear Wipe) and crop presets (Freeform, 16:9, etc.).
-                - Text color and outline stroke controls.
+              ### What's Fixed & Improved in v2.4.7
+              - **Native Export Rendering Pipeline & Deserialization**:
+                - Fixed `serde_json` composition deserialization error by changing `TextOverlay` color fields from `u64` to `i64`, properly accepting negative ARGB values passed from Android.
+                - Added `#[serde(other)] Unknown` fallback variant to `EffectConfig` to prevent export pipeline failures on unrecognized effect attributes.
+                - Enhanced `fallbackExportWithAndroidMediaMuxer` to scan all media tracks and preserve local copies seamlessly.
+              - **Sound Effects & Audio Playback**:
+                - Auto-create `TrackType.Audio` track on importing music or selecting sound effects (Vine Boom, Bruh, Airhorn, etc.), fixing the issue where SFX and audio were ignored when no audio track existed.
+                - Enabled audio volume boost (>100%) in video preview player with `LoudnessEnhancer` up to 2000mB.
+              - **Font Picker & Custom ZIP Font Archive Support**:
+                - Added font selection row and direct `+ Import (.ttf/.otf/.zip)` launcher inside `TextEditorDialog`.
+                - Auto-extracts TTF and OTF fonts from ZIP archives and applies them immediately with custom typeface cache.
+                - Movable and resizable text overlay gestures in preview player, persisting X, Y, and font size directly.
+              - **Media URI Resolution & Image Extensions**:
+                - Fixed `resolveMediaUriToLocalFile` forcing `.mp4` onto all files. Now preserves actual extensions (`.png`, `.jpg`, `.webp`, `.mp3`, `.wav`, `.ttf`, `.otf`, `.zip`) and sets appropriate image duration.
+              - **Timeline & Gesture Fixes**:
+                - Fixed bottom free space timestamp scrubbing by wrapping playhead position with `rememberUpdatedState` to avoid jumps or resets.
+                - Clamped transition and animation badges to clip width so they never overflow.
+                - Corrected pan/zoom gestures in preview player to avoid double accumulation.
+                - Fixed project thumbnail aspect ratio stretching.
+              - **Full Polish & Spanish Localization**:
+                - Fully localized all editor buttons, empty media banners, timestamp scrubbing hint, and font options across English, Spanish, and Polish without English leftovers.
+              - **Zero Internet Guarantee**:
+                - 100% offline with zero network permissions in `AndroidManifest.xml`. Built for privacy, performance, and F-Droid standards.
                 - Jump to timestamp instruction dialog and timecode pills.
                 - Community plugins sheet and parameter controls.
                 - Export and compression progress, ETA countdown, and status dialogs.

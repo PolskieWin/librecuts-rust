@@ -29,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,6 +61,7 @@ import com.librecuts.rust.engine.EffectConfig
 import com.librecuts.rust.engine.Keyframe
 import com.librecuts.rust.engine.ThumbnailCache
 import com.librecuts.rust.engine.TransitionType
+import com.librecuts.rust.ui.theme.LocalAppStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -81,6 +83,7 @@ fun VideoPreviewPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val strings = LocalAppStrings.current
 
     val isImageMedia = remember(videoUri) {
         val path = videoUri ?: ""
@@ -122,30 +125,53 @@ fun VideoPreviewPlayer(
         }
     }
 
-    val loudnessEnhancer = remember(exoPlayer) {
-        try {
-            if (exoPlayer.audioSessionId != 0 && exoPlayer.audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
-                LoudnessEnhancer(exoPlayer.audioSessionId).apply { enabled = true }
-            } else null
-        } catch (t: Throwable) {
-            null
+    // Helper to safely convert file paths (with or without scheme) into valid ExoPlayer URIs
+    fun safeUri(path: String?): Uri {
+        if (path.isNullOrEmpty()) return Uri.EMPTY
+        return if (path.startsWith("content://") || path.startsWith("file://")) {
+            Uri.parse(path)
+        } else {
+            Uri.fromFile(File(path))
         }
     }
 
-    DisposableEffect(loudnessEnhancer) {
+    var audioSessionId by remember { mutableIntStateOf(0) }
+    var loudnessEnhancer by remember { mutableStateOf<LoudnessEnhancer?>(null) }
+
+    DisposableEffect(exoPlayer, audioPlayer) {
+        val listener = object : Player.Listener {
+            override fun onAudioSessionIdChanged(sessionId: Int) {
+                audioSessionId = sessionId
+                if (sessionId != 0 && sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                    try {
+                        loudnessEnhancer?.release()
+                        loudnessEnhancer = LoudnessEnhancer(sessionId).apply { enabled = true }
+                    } catch (e: Exception) {
+                        loudnessEnhancer = null
+                    }
+                }
+            }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    onPlaybackEnded()
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
         onDispose {
-            try {
-                loudnessEnhancer?.release()
-            } catch (e: Exception) {}
+            exoPlayer.removeListener(listener)
+            try { loudnessEnhancer?.release() } catch (e: Exception) {}
+            exoPlayer.release()
+            audioPlayer.release()
         }
     }
 
     // Dynamic Volume & Audio Boost Control (0% to 200%)
-    LaunchedEffect(activeClip?.volume, activeClip?.muted, exoPlayer) {
+    LaunchedEffect(activeClip?.volume, activeClip?.muted, loudnessEnhancer, audioSessionId) {
         val vol = if (activeClip?.muted == true) 0f else (activeClip?.volume ?: 1.0f)
         exoPlayer.volume = vol.coerceIn(0f, 1.0f)
         if (vol > 1.0f) {
-            val gainMb = ((vol - 1.0f) * 1000).toInt().coerceIn(0, 1500)
+            val gainMb = ((vol - 1.0f) * 1200).toInt().coerceIn(0, 2000)
             try {
                 loudnessEnhancer?.setTargetGain(gainMb)
                 loudnessEnhancer?.enabled = true
@@ -157,25 +183,9 @@ fun VideoPreviewPlayer(
         }
     }
 
-    DisposableEffect(exoPlayer, audioPlayer) {
-        val listener = object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    onPlaybackEnded()
-                }
-            }
-        }
-        exoPlayer.addListener(listener)
-        onDispose {
-            exoPlayer.removeListener(listener)
-            exoPlayer.release()
-            audioPlayer.release()
-        }
-    }
-
     LaunchedEffect(videoUri, isImageMedia) {
         if (!isImageMedia && !videoUri.isNullOrEmpty()) {
-            val mediaItem = MediaItem.fromUri(Uri.parse(videoUri))
+            val mediaItem = MediaItem.fromUri(safeUri(videoUri))
             exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
         }
@@ -191,14 +201,19 @@ fun VideoPreviewPlayer(
     var currentAudioUri by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(activeAudioClip?.file_path) {
         val path = activeAudioClip?.file_path
-        if (!path.isNullOrEmpty() && path != currentAudioUri) {
-            currentAudioUri = path
-            try {
-                audioPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(path)))
-                audioPlayer.prepare()
-            } catch (e: Exception) {
-                e.printStackTrace()
+        if (!path.isNullOrEmpty()) {
+            if (path != currentAudioUri) {
+                currentAudioUri = path
+                try {
+                    audioPlayer.setMediaItem(MediaItem.fromUri(safeUri(path)))
+                    audioPlayer.prepare()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
+        } else {
+            currentAudioUri = null
+            audioPlayer.pause()
         }
     }
 
@@ -216,15 +231,17 @@ fun VideoPreviewPlayer(
         }
     }
 
-    // Video Playback loop
+    // Video Playback loop with Smooth Image Progress
     LaunchedEffect(isPlaying, isImageMedia) {
         if (isPlaying) {
             if (!isImageMedia) exoPlayer.play()
+            var simulatedPos = currentPositionMs
             while (isActive) {
                 if (!isImageMedia) {
                     onPositionChanged(exoPlayer.currentPosition)
                 } else {
-                    onPositionChanged(currentPositionMs + 40L)
+                    simulatedPos += 40L
+                    onPositionChanged(simulatedPos)
                 }
                 delay(40)
             }
@@ -238,6 +255,40 @@ fun VideoPreviewPlayer(
         if (!isImageMedia && Math.abs(exoPlayer.currentPosition - currentPositionMs) > 120) {
             exoPlayer.seekTo(currentPositionMs)
         }
+    }
+
+    // Dynamic Speed & Speed Ramp Control (Clip Adjustments)
+    LaunchedEffect(activeClip?.speed, activeClip?.speedCurve, currentPositionMs, isPlaying) {
+        if (!isImageMedia) {
+            val baseSpeed = (activeClip?.speed ?: 1.0f).coerceIn(0.25f, 4.0f)
+            val effectiveSpeed = if (activeClip?.speedCurve != null && activeClip.speedCurve != com.librecuts.rust.engine.SpeedCurveType.NORMAL && (activeClip.durationMs) > 0) {
+                val clipProgress = (clipElapsedMs.toFloat() / activeClip.durationMs).coerceIn(0f, 1f)
+                when (activeClip.speedCurve) {
+                    com.librecuts.rust.engine.SpeedCurveType.MONTAGE -> {
+                        if (clipProgress in 0.35f..0.65f) 0.5f else 2.0f
+                    }
+                    com.librecuts.rust.engine.SpeedCurveType.HERO_MOMENT -> {
+                        if (clipProgress in 0.35f..0.7f) 0.35f else 1.0f
+                    }
+                    com.librecuts.rust.engine.SpeedCurveType.BULLET_TIME -> {
+                        if (clipProgress in 0.25f..0.75f) 0.25f else 1.0f
+                    }
+                    com.librecuts.rust.engine.SpeedCurveType.FLASH_IN -> {
+                        if (clipProgress < 0.3f) 3.0f else 1.0f
+                    }
+                    else -> baseSpeed
+                }
+            } else {
+                baseSpeed
+            }
+
+            try {
+                if (Math.abs(exoPlayer.playbackParameters.speed - effectiveSpeed) > 0.05f) {
+                    exoPlayer.setPlaybackSpeed(effectiveSpeed)
+                }
+            } catch (e: Exception) {}
+        }
+    }
     }
 
     // Dynamic Color Grading & Filter Matrix for Real-Time Clip Adjustments
@@ -487,14 +538,14 @@ fun VideoPreviewPlayer(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "No Media Added",
+                    text = strings.noMediaAdded,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Tap 'Add Clips' below to import videos or photos",
+                    text = strings.tapToAddMediaHint,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.6f)
                 )
@@ -508,10 +559,10 @@ fun VideoPreviewPlayer(
             .background(Color.Black)
             .pointerInput(activeClip?.id, clipElapsedMs) {
                 detectTransformGestures { _, pan, zoom, rotation ->
-                    livePanX += pan.x
-                    livePanY += pan.y
-                    liveZoom = (liveZoom * zoom).coerceIn(0.2f, 5.0f)
-                    liveRotation += rotation
+                    val newX = currentKfTransform.x + pan.x
+                    val newY = currentKfTransform.y + pan.y
+                    val newScale = (currentKfTransform.scale * zoom).coerceIn(0.2f, 5.0f)
+                    val newRot = currentKfTransform.rotation + rotation
 
                     // CapCut behavior: automatically create or update keyframe at current playhead timestamp!
                     activeClip?.let { clip ->
@@ -519,10 +570,10 @@ fun VideoPreviewPlayer(
                             clip.id,
                             Keyframe(
                                 timeMs = clipElapsedMs,
-                                x = currentKfTransform.x + livePanX,
-                                y = currentKfTransform.y + livePanY,
-                                scale = (currentKfTransform.scale * liveZoom).coerceIn(0.2f, 5f),
-                                rotation = currentKfTransform.rotation + liveRotation,
+                                x = newX,
+                                y = newY,
+                                scale = newScale,
+                                rotation = newRot,
                                 opacity = currentKfTransform.opacity
                             )
                         )
@@ -530,10 +581,10 @@ fun VideoPreviewPlayer(
                 }
             }
             .graphicsLayer {
-                val totalX = currentKfTransform.x + livePanX + liveAnimSlideX
-                val totalY = currentKfTransform.y + livePanY
-                val totalScale = currentKfTransform.scale * liveZoom * liveAnimScale
-                val totalRot = currentKfTransform.rotation + liveRotation + liveAnimRot
+                val totalX = currentKfTransform.x + liveAnimSlideX
+                val totalY = currentKfTransform.y
+                val totalScale = currentKfTransform.scale * liveAnimScale
+                val totalRot = currentKfTransform.rotation + liveAnimRot
                 val totalAlpha = (currentKfTransform.opacity * liveAnimAlpha).coerceIn(0f, 1f)
                 val mediaScale = transform?.scale ?: 1.0f
 
@@ -579,6 +630,7 @@ fun VideoPreviewPlayer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
                     .drawWithContent {
                         drawContent()
                         // Creative Color Filter Blend Overlay

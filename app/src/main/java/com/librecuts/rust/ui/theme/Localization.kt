@@ -125,6 +125,10 @@ data class AppStrings(
     val importPhotosTitle: String,
     val importPhotosDesc: String,
     val transitionDurationLabel: String,
+    val animationDurationLabel: String,
+    val scrubTimestamps: String,
+    val noMediaAdded: String,
+    val tapToAddMediaHint: String,
 
     // Effects Sheet
     val clipAdjustments: String,
@@ -376,6 +380,10 @@ val EnglishStrings = AppStrings(
     importPhotosTitle = "Import Photos & Images (with Auto Cutout)",
     importPhotosDesc = "Add still photos/graphics to timeline and remove background in Effects",
     transitionDurationLabel = "Transition Duration",
+    animationDurationLabel = "Animation Duration",
+    scrubTimestamps = "Scrub timestamps",
+    noMediaAdded = "No Media Added",
+    tapToAddMediaHint = "Tap 'Add Clips' below to import videos or photos",
 
     clipAdjustments = "Clip Adjustments",
     playbackSpeed = "Playback Speed",
@@ -616,6 +624,10 @@ val SpanishStrings = AppStrings(
     importPhotosTitle = "Importar fotos e imágenes (con recorte automático)",
     importPhotosDesc = "Añade fotos a la línea de tiempo y elimina el fondo en Efectos",
     transitionDurationLabel = "Duración de la transición",
+    animationDurationLabel = "Duración de la animación",
+    scrubTimestamps = "Desplazar línea de tiempo",
+    noMediaAdded = "No hay medios añadidos",
+    tapToAddMediaHint = "Toca 'Añadir clips' abajo para importar vídeos o fotos",
 
     clipAdjustments = "Ajustes del clip",
     playbackSpeed = "Velocidad de reproducción",
@@ -856,6 +868,10 @@ val PolishStrings = AppStrings(
     importPhotosTitle = "Importuj zdjęcia i obrazy (z wycinaniem tła)",
     importPhotosDesc = "Dodaj zdjęcia do osi czasu i usuń tło w menu Efekty",
     transitionDurationLabel = "Czas trwania przejścia",
+    animationDurationLabel = "Czas trwania animacji",
+    scrubTimestamps = "Przesuń po osi czasu",
+    noMediaAdded = "Brak multimediów",
+    tapToAddMediaHint = "Dotknij 'Dodaj klipy' poniżej, aby zaimportować wideo lub zdjęcia",
 
     clipAdjustments = "Dostosowanie klipu",
     playbackSpeed = "Prędkość odtwarzania",
