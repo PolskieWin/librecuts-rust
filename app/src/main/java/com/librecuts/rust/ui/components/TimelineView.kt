@@ -78,6 +78,7 @@ fun TimelineView(
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     var zoomScale by remember { mutableFloatStateOf(0.05f) } // pixels per millisecond
     val scrollState = rememberScrollState()
 

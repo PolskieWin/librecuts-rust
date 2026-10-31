@@ -274,6 +274,7 @@ fun VideoPreviewPlayer(
     }
 
     // Dynamic Speed & Speed Ramp Control (Clip Adjustments)
+    val clipElapsedMs = (currentPositionMs - (activeClip?.timeline_start_ms ?: 0L)).coerceAtLeast(0L)
     LaunchedEffect(activeClip?.speed, activeClip?.speedCurve, currentPositionMs, isPlaying) {
         if (!isImageMedia) {
             val baseSpeed = (activeClip?.speed ?: 1.0f).coerceIn(0.25f, 4.0f)
@@ -402,7 +403,6 @@ fun VideoPreviewPlayer(
     }
 
     // Real-Time Live In/Out/Combo Animations & Transitions based on currentPositionMs
-    val clipElapsedMs = (currentPositionMs - (activeClip?.timeline_start_ms ?: 0L)).coerceAtLeast(0L)
     val clipRemainingMs = (((activeClip?.timeline_start_ms ?: 0L) + (activeClip?.durationMs ?: 1L)) - currentPositionMs).coerceAtLeast(0L)
     val animDuration = 600L
 
