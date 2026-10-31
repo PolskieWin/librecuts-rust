@@ -243,25 +243,6 @@ fun EffectsSheet(
         onUpdateClip(newEffects, speed, speedCurve, volume, transition, transitionDurationMs, animation, animationDurationMs)
     }
 
-    val fontPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                val opt = fontManager.importFontFromUri(it)
-                if (opt != null) {
-                    availableFonts = fontManager.getAvailableFonts()
-                    selectedFontPath = opt.path
-                    syncAll()
-                    haptics.snap()
-                    Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to import font", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -905,29 +886,7 @@ fun EffectsSheet(
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(strings.fontLabel, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
-                        Button(
-                            onClick = {
-                                haptics.tick()
-                                fontPickerLauncher.launch("*/*")
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(strings.importFont, fontSize = 11.sp, maxLines = 1, softWrap = false)
-                        }
-                    }
+                    Text(strings.fontLabel, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
 
                     Spacer(modifier = Modifier.height(8.dp))
 

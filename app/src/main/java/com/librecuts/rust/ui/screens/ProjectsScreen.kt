@@ -453,13 +453,14 @@ fun ProjectCard(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val strings = LocalAppStrings.current
     var showMenu by remember { mutableStateOf(false) }
     var thumbnailBitmap by remember(project.firstClipUri) { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(project.firstClipUri) {
         project.firstClipUri?.let { path ->
-            thumbnailBitmap = ThumbnailCache.getThumbnail(path)
+            thumbnailBitmap = ThumbnailCache.getThumbnail(path, context = context)
         }
     }
 

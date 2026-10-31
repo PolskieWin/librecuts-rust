@@ -19,8 +19,9 @@ import kotlin.random.Random
  */
 class SoundEffectsManager(private val context: Context) {
 
+    // Use sfx_v2 directory to ensure any legacy quiet cached waveforms are upgraded to high-loudness
     private val sfxDir: File
-        get() = File(context.filesDir, "sfx").apply { mkdirs() }
+        get() = File(context.filesDir, "sfx_v2").apply { mkdirs() }
 
     data class SoundEffectItem(
         val name: String,
@@ -93,8 +94,8 @@ class SoundEffectsManager(private val context: Context) {
 
                     val raw = (primary + sub + initialPunchNoise) * env
                     // Heavy soft-clip saturation for the signature bass crunch
-                    val saturated = Math.tanh(raw * 2.2)
-                    samples[i] = (saturated * 32200).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(raw * 2.5)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "bruh.wav" -> {
@@ -110,7 +111,8 @@ class SoundEffectsManager(private val context: Context) {
                     val h2 = sin(2.0 * PI * (f0 * 2.0) * t) * 0.55
                     val h3 = sin(2.0 * PI * (f0 * 3.0) * t) * 0.35
                     val vocal = (h1 + h2 + h3) * env
-                    samples[i] = (vocal * 29000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(vocal * 1.5)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "air_horn.wav" -> {
@@ -118,11 +120,12 @@ class SoundEffectsManager(private val context: Context) {
                 for (i in 0 until totalSamples) {
                     val t = i.toDouble() / sampleRate
                     val env = if (t < 0.05) t / 0.05 else exp(-1.5 * (t - 0.05))
-                    val t1 = Math.signum(sin(2.0 * PI * 466.16 * t)) * 0.4
-                    val t2 = Math.signum(sin(2.0 * PI * 622.25 * t)) * 0.35
-                    val t3 = Math.signum(sin(2.0 * PI * 932.33 * t)) * 0.25
+                    val t1 = Math.signum(sin(2.0 * PI * 466.16 * t)) * 0.45
+                    val t2 = Math.signum(sin(2.0 * PI * 622.25 * t)) * 0.40
+                    val t3 = Math.signum(sin(2.0 * PI * 932.33 * t)) * 0.30
                     val raw = (t1 + t2 + t3) * env
-                    samples[i] = (raw * 27000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(raw * 1.6)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "fast_whoosh.wav" -> {
@@ -131,10 +134,11 @@ class SoundEffectsManager(private val context: Context) {
                     val t = i.toDouble() / durationSec
                     val freq = 300.0 + 1600.0 * sin(PI * t)
                     val envelope = sin(PI * t)
-                    val noise = (Random.nextDouble() * 2.0 - 1.0) * 0.45
-                    val tone = sin(2.0 * PI * freq * (i.toDouble() / sampleRate)) * 0.55
+                    val noise = (Random.nextDouble() * 2.0 - 1.0) * 0.55
+                    val tone = sin(2.0 * PI * freq * (i.toDouble() / sampleRate)) * 0.60
                     val combined = (noise + tone) * envelope
-                    samples[i] = (combined * 28000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(combined * 1.8)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "bubble_pop.wav" -> {
@@ -144,7 +148,8 @@ class SoundEffectsManager(private val context: Context) {
                     val freq = 600.0 + 1000.0 * (t / 0.08).coerceIn(0.0, 1.0)
                     val env = exp(-35.0 * t)
                     val raw = sin(2.0 * PI * freq * t) * env
-                    samples[i] = (raw * 30000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(raw * 2.0)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "camera_shutter.wav" -> {
@@ -155,7 +160,8 @@ class SoundEffectsManager(private val context: Context) {
                     val t2 = t - 0.11
                     val click2 = if (t2 in 0.0..0.08) (Random.nextDouble() * 2.0 - 1.0) * exp(-45.0 * t2) else 0.0
                     val combined = (click1 + click2 * 1.2).coerceIn(-1.0, 1.0)
-                    samples[i] = (combined * 31000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(combined * 2.0)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "fail_buzzer.wav" -> {
@@ -163,10 +169,11 @@ class SoundEffectsManager(private val context: Context) {
                 for (i in 0 until totalSamples) {
                     val t = i.toDouble() / sampleRate
                     val env = if (t in 0.45..0.55) 0.0 else exp(-0.8 * (t % 0.5))
-                    val b1 = Math.signum(sin(2.0 * PI * 150.0 * t)) * 0.5
-                    val b2 = Math.signum(sin(2.0 * PI * 158.0 * t)) * 0.5
+                    val b1 = Math.signum(sin(2.0 * PI * 150.0 * t)) * 0.55
+                    val b2 = Math.signum(sin(2.0 * PI * 158.0 * t)) * 0.55
                     val raw = (b1 + b2) * env
-                    samples[i] = (raw * 28000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(raw * 1.8)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "ding_bell.wav" -> {
@@ -177,7 +184,8 @@ class SoundEffectsManager(private val context: Context) {
                     val fundamental = sin(2.0 * PI * 2400.0 * t) * 0.75
                     val overtone = sin(2.0 * PI * 4800.0 * t) * 0.25 * exp(-4.0 * t)
                     val raw = (fundamental + overtone) * env
-                    samples[i] = (raw * 31000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(raw * 1.8)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             "vinyl_scratch.wav" -> {
@@ -189,7 +197,8 @@ class SoundEffectsManager(private val context: Context) {
                     val noise = (Random.nextDouble() * 2.0 - 1.0) * 0.6
                     val tone = sin(2.0 * PI * freqMod * t) * 0.4
                     val combined = (noise + tone) * envelope
-                    samples[i] = (combined * 26000).toInt().coerceIn(-32768, 32767).toShort()
+                    val saturated = Math.tanh(combined * 2.0)
+                    samples[i] = (saturated * 32760).toInt().coerceIn(-32768, 32767).toShort()
                 }
             }
             else -> {

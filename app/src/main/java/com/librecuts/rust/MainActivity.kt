@@ -47,20 +47,7 @@ class MainActivity : ComponentActivity() {
 
             var currentScreen by remember { mutableStateOf(MainScreen.PROJECTS) }
             var themeMode by remember { mutableStateOf(AppThemeMode.PURE_BLACK) }
-            val initialLang = remember {
-                val savedCode = prefs.getString("app_language", null)
-                if (!savedCode.isNullOrEmpty()) {
-                    AppLanguage.values().find { it.code == savedCode } ?: AppLanguage.ENGLISH
-                } else {
-                    val sysLang = java.util.Locale.getDefault().language.lowercase()
-                    when {
-                        sysLang.startsWith("pl") -> AppLanguage.POLISH
-                        sysLang.startsWith("es") -> AppLanguage.SPANISH
-                        else -> AppLanguage.ENGLISH
-                    }
-                }
-            }
-            var appLanguage by remember { mutableStateOf(initialLang) }
+            val appLanguage = AppLanguage.ENGLISH
             var isTimeTrackerEnabled by remember { mutableStateOf(false) }
             var customAccentHue by remember { mutableStateOf(prefs.getFloat("custom_accent_hue", 28f)) } // Default vibrant Orange (28f)
             var activeProject by remember { mutableStateOf<Project?>(null) }
@@ -96,11 +83,6 @@ class MainActivity : ComponentActivity() {
                                 SettingsScreen(
                                     currentTheme = themeMode,
                                     onThemeChanged = { themeMode = it },
-                                    currentLanguage = appLanguage,
-                                    onLanguageChanged = { lang ->
-                                        appLanguage = lang
-                                        prefs.edit().putString("app_language", lang.code).apply()
-                                    },
                                     isTimeTrackerEnabled = isTimeTrackerEnabled,
                                     onTimeTrackerChanged = { isTimeTrackerEnabled = it },
                                     customAccentHue = customAccentHue,

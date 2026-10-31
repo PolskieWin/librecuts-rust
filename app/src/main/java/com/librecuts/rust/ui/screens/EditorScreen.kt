@@ -421,24 +421,6 @@ fun EditorScreen(
         }
     }
 
-    // Custom Font (.ttf / .otf / .zip) Picker
-    val fontPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                val imported = fontManager.importFontFromUri(it)
-                if (imported != null) {
-                    editingTextFontPath = imported.path
-                    haptics.split()
-                    Toast.makeText(context, "Font loaded: ${imported.name}", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to import font (.ttf, .otf, .zip)", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted: Boolean ->
@@ -808,15 +790,17 @@ fun EditorScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             // Dynamic clip under playhead resolution so adjustments and cuts always work
-            val clipAtPlayhead = selectedClip ?: composition.tracks
+            val visualClipAtPlayhead = composition.tracks
+                .filter { it.track_type == TrackType.Video || it.track_type == TrackType.Overlay }
                 .flatMap { it.clips }
                 .find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
+                ?: if (selectedClip?.let { sc -> composition.tracks.any { t -> (t.track_type == TrackType.Video || t.track_type == TrackType.Overlay) && t.clips.any { it.id == sc.id } } } == true) selectedClip else null
                 ?: composition.tracks
                     .find { it.track_type == TrackType.Video }
                     ?.clips
                     ?.firstOrNull()
 
-            val currentMediaUri = clipAtPlayhead?.file_path
+            val currentMediaUri = visualClipAtPlayhead?.file_path
 
             Box(
                 modifier = Modifier
@@ -829,7 +813,7 @@ fun EditorScreen(
 
                 VideoPreviewPlayer(
                     videoUri = currentMediaUri,
-                    activeClip = clipAtPlayhead,
+                    activeClip = visualClipAtPlayhead,
                     audioClips = audioClips,
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
@@ -845,6 +829,9 @@ fun EditorScreen(
                             })
                         }
                         composition = composition.copy(tracks = updatedTracks)
+                    },
+                    onAddMediaClicked = {
+                        multipleVideoPickerLauncher.launch("video/*")
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -894,7 +881,7 @@ fun EditorScreen(
 
                     LaunchedEffect(ovClip.file_path, bgRemoval) {
                         withContext(Dispatchers.Default) {
-                            val raw = ThumbnailCache.getThumbnail(ovClip.file_path, 800, 800)
+                            val raw = ThumbnailCache.getThumbnail(ovClip.file_path, 800, 800, context = context)
                             if (raw != null && bgRemoval != null) {
                                 ovBitmap = ThumbnailCache.removeBackgroundFromBitmap(raw, bgRemoval.threshold, bgRemoval.invert)
                             } else {
@@ -1644,7 +1631,8 @@ fun EditorScreen(
                         file_path = item.localFilePath,
                         source_start_ms = 0L,
                         source_end_ms = (item.durationSec * 1000).toLong(),
-                        timeline_start_ms = currentPositionMs
+                        timeline_start_ms = currentPositionMs,
+                        volume = 1.8f
                     )
                     val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
                     val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio", track_type = TrackType.Audio)
@@ -1875,17 +1863,6 @@ fun EditorScreen(
                                 },
                                 label = { Text(fontOpt.name, maxLines = 1, fontSize = 11.sp) }
                             )
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                haptics.snap()
-                                fontPickerLauncher.launch("*/*")
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(strings.importFont, fontSize = 11.sp)
                         }
                     }
 

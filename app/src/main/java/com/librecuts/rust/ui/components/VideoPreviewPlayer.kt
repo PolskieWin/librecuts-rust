@@ -81,6 +81,7 @@ fun VideoPreviewPlayer(
     onPositionChanged: (Long) -> Unit,
     onPlaybackEnded: () -> Unit = {},
     onKeyframeUpdated: ((clipId: String, keyframe: Keyframe) -> Unit)? = null,
+    onAddMediaClicked: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -88,10 +89,19 @@ fun VideoPreviewPlayer(
 
     val isImageMedia = remember(videoUri) {
         val path = videoUri ?: ""
-        path.endsWith(".jpg", ignoreCase = true) ||
-                path.endsWith(".jpeg", ignoreCase = true) ||
-                path.endsWith(".png", ignoreCase = true) ||
-                path.endsWith(".webp", ignoreCase = true)
+        if (path.startsWith("content://")) {
+            try {
+                val mime = context.contentResolver.getType(Uri.parse(path)) ?: ""
+                mime.startsWith("image/")
+            } catch (e: Exception) {
+                false
+            }
+        } else {
+            path.endsWith(".jpg", ignoreCase = true) ||
+                    path.endsWith(".jpeg", ignoreCase = true) ||
+                    path.endsWith(".png", ignoreCase = true) ||
+                    path.endsWith(".webp", ignoreCase = true)
+        }
     }
 
     val bgRemoval = activeClip?.effects?.filterIsInstance<EffectConfig.BackgroundRemoval>()?.firstOrNull()
@@ -99,7 +109,7 @@ fun VideoPreviewPlayer(
 
     LaunchedEffect(videoUri, bgRemoval) {
         if (isImageMedia && !videoUri.isNullOrEmpty()) {
-            val rawBitmap = ThumbnailCache.getThumbnail(videoUri, 1280, 720)
+            val rawBitmap = ThumbnailCache.getThumbnail(videoUri, 1280, 720, context = context)
             if (rawBitmap != null && bgRemoval != null) {
                 withContext(Dispatchers.Default) {
                     imageBitmap = removeBackgroundFromBitmap(rawBitmap, bgRemoval.threshold, bgRemoval.invert)
@@ -200,11 +210,23 @@ fun VideoPreviewPlayer(
         }
     }
 
+    val clipStartMs = activeClip?.timeline_start_ms ?: 0L
+    val clipSourceStartMs = activeClip?.source_start_ms ?: 0L
+
     LaunchedEffect(videoUri, isImageMedia) {
         if (!isImageMedia && !videoUri.isNullOrEmpty()) {
-            val mediaItem = MediaItem.fromUri(safeUri(videoUri))
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
+            val uri = safeUri(videoUri)
+            val currentUri = try { exoPlayer.currentMediaItem?.localConfiguration?.uri } catch (e: Exception) { null }
+            if (currentUri != uri) {
+                val mediaItem = MediaItem.fromUri(uri)
+                exoPlayer.setMediaItem(mediaItem)
+                exoPlayer.prepare()
+                val targetMediaPos = (currentPositionMs - clipStartMs + clipSourceStartMs).coerceAtLeast(0L)
+                exoPlayer.seekTo(targetMediaPos)
+                if (isPlaying) {
+                    exoPlayer.play()
+                }
+            }
         }
     }
 
@@ -234,11 +256,11 @@ fun VideoPreviewPlayer(
         }
     }
 
-    LaunchedEffect(isPlaying, activeAudioClip?.id) {
+    LaunchedEffect(isPlaying, activeAudioClip?.id, activeAudioClip?.volume, activeAudioClip?.muted) {
         if (isPlaying && activeAudioClip != null) {
             val offset = (currentPositionMs - activeAudioClip.timeline_start_ms + activeAudioClip.source_start_ms).coerceAtLeast(0L)
             audioPlayer.seekTo(offset)
-            val vol = if (activeAudioClip.muted) 0f else activeAudioClip.volume.coerceIn(0f, 1f)
+            val vol = if (activeAudioClip.muted) 0f else (activeAudioClip.volume * 1.5f).coerceIn(0f, 1.0f)
             audioPlayer.volume = vol
             audioPlayer.play()
         } else {
@@ -247,24 +269,23 @@ fun VideoPreviewPlayer(
     }
 
     // Video Playback loop with Smooth Image Progress
-    LaunchedEffect(isPlaying, isImageMedia) {
+    LaunchedEffect(isPlaying, isImageMedia, activeClip?.id) {
         if (isPlaying) {
-            if (!isImageMedia) exoPlayer.play()
+            if (!isImageMedia && activeClip != null) {
+                val startSeek = (currentPositionMs - clipStartMs + clipSourceStartMs).coerceAtLeast(0L)
+                exoPlayer.seekTo(startSeek)
+                exoPlayer.play()
+            }
             var simulatedPos = currentPositionMs
-            val maxDur = activeClip?.durationMs ?: 5000L
             while (isActive) {
-                if (!isImageMedia) {
-                    onPositionChanged(exoPlayer.currentPosition)
+                if (!isImageMedia && activeClip != null) {
+                    val newTimelinePos = (exoPlayer.currentPosition - clipSourceStartMs + clipStartMs).coerceAtLeast(0L)
+                    onPositionChanged(newTimelinePos)
                 } else {
-                    simulatedPos += 40L
-                    if (simulatedPos >= maxDur) {
-                        onPositionChanged(maxDur)
-                        onPlaybackEnded()
-                        break
-                    }
+                    simulatedPos += 33L
                     onPositionChanged(simulatedPos)
                 }
-                delay(40)
+                delay(33L)
             }
         } else {
             if (!isImageMedia) exoPlayer.pause()
@@ -272,10 +293,11 @@ fun VideoPreviewPlayer(
     }
 
     // Scrubbing synchronization - ONLY seek when paused to avoid starving playback thread
-    LaunchedEffect(currentPositionMs, isImageMedia, isPlaying) {
-        if (!isPlaying && !isImageMedia) {
-            if (Math.abs(exoPlayer.currentPosition - currentPositionMs) > 60) {
-                exoPlayer.seekTo(currentPositionMs)
+    LaunchedEffect(currentPositionMs, isImageMedia, isPlaying, activeClip?.id) {
+        if (!isPlaying && !isImageMedia && activeClip != null) {
+            val targetMediaPos = (currentPositionMs - clipStartMs + clipSourceStartMs).coerceAtLeast(0L)
+            if (Math.abs(exoPlayer.currentPosition - targetMediaPos) > 60) {
+                exoPlayer.seekTo(targetMediaPos)
             }
         }
     }
@@ -545,19 +567,22 @@ fun VideoPreviewPlayer(
         Box(
             modifier = modifier
                 .background(Color(0xFF0F172A))
-                .fillMaxSize(),
+                .fillMaxSize()
+                .clickable { onAddMediaClicked?.invoke() },
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clickable { onAddMediaClicked?.invoke() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.AddPhotoAlternate,
-                            contentDescription = null,
+                            contentDescription = strings.addMedia,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )

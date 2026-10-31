@@ -2,12 +2,8 @@ package com.librecuts.rust.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Timer
@@ -52,32 +46,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.librecuts.rust.engine.FontManager
 import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppLanguage
 import com.librecuts.rust.ui.theme.AppThemeMode
 import com.librecuts.rust.ui.theme.LocalAppStrings
 import com.librecuts.rust.ui.theme.colorFromHue
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     currentTheme: AppThemeMode,
     onThemeChanged: (AppThemeMode) -> Unit,
-    currentLanguage: AppLanguage,
-    onLanguageChanged: (AppLanguage) -> Unit,
+    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    onLanguageChanged: (AppLanguage) -> Unit = {},
     isTimeTrackerEnabled: Boolean = false,
     onTimeTrackerChanged: (Boolean) -> Unit = {},
     customAccentHue: Float = 28f,
@@ -85,28 +72,8 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val strings = LocalAppStrings.current
     val haptics = rememberHapticHelper()
-    val fontManager = remember { FontManager(context) }
-    var availableFonts by remember { mutableStateOf(fontManager.getAvailableFonts()) }
-
-    val fontPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                val opt = fontManager.importFontFromUri(it)
-                if (opt != null) {
-                    availableFonts = fontManager.getAvailableFonts()
-                    haptics.snap()
-                    Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to import font", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -285,34 +252,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Section 2: Language Switcher (Only English, Spanish, Polish)
-            SectionHeader(title = strings.languageSection, icon = Icons.Default.Language)
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    AppLanguage.values().forEachIndexed { index, lang ->
-                        LanguageOptionRow(
-                            language = lang,
-                            selected = currentLanguage == lang,
-                            onSelect = {
-                                haptics.tick()
-                                onLanguageChanged(lang)
-                            }
-                        )
-                        if (index < AppLanguage.values().size - 1) {
-                            Divider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // Section 3: Project Time Tracker (Optional feature enabled by user)
+            // Section 2: Project Time Tracker (Optional feature enabled by user)
             SectionHeader(title = strings.timeTracker, icon = Icons.Default.Timer)
 
             Card(
@@ -351,74 +291,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Section 4: Custom Fonts (Global font importer & manager)
-            SectionHeader(title = strings.customFontsSection, icon = Icons.Default.FontDownload)
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = strings.customFontsSection,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = strings.customFontsDesc,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                            )
-                        }
-                        Button(
-                            onClick = {
-                                haptics.tick()
-                                fontPickerLauncher.launch("*/*")
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(strings.importFont, fontSize = 11.sp, maxLines = 1, softWrap = false)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Available Fonts Chips
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        availableFonts.forEach { fontOpt ->
-                            FilterChip(
-                                selected = false,
-                                onClick = {
-                                    haptics.tick()
-                                    Toast.makeText(context, "${fontOpt.name} active", Toast.LENGTH_SHORT).show()
-                                },
-                                label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // Section 5: About the Project
+            // Section 3: About the Project
             SectionHeader(title = strings.aboutSection, icon = Icons.Default.Info)
 
             Card(
@@ -531,39 +404,6 @@ private fun ThemeOptionRow(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
-        RadioButton(
-            selected = selected,
-            onClick = onSelect
-        )
-    }
-}
-
-@Composable
-private fun LanguageOptionRow(
-    language: AppLanguage,
-    selected: Boolean,
-    onSelect: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                text = language.displayName,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = language.code.uppercase(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
             )
         }
         RadioButton(
