@@ -80,35 +80,47 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.11
+      - name: Publish GitHub Release v2.4.12
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.11
-            name: "LibreCut RS v2.4.11 - Crash-Proof Video & Image Import, Resolved Preview States, Native Export Hardening"
+            tag_name: v2.4.12
+            name: "LibreCut RS v2.4.12 - Full Timeline Scrubbing & Jog Controls, Conflict-Free Gestures, Visual Scrubber Bar"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.11
+              # LibreCut RS v2.4.12
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Critical stability and import hotfix eliminating application crashes when importing videos and images, hardening background coroutines, resolving preview lifecycle states, and guaranteeing robust local caching for offline export.
+              Complete overhaul of timeline navigation, introducing interactive timestamp scrubbing via Down Free Space, an elevated high-precision Down Left Space jog dial, conflict-free low-latency gesture detection with zero touch-slop delay, and smooth jitter-free track auto-scrolling.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.11-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.11-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.11-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.11-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.12-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.12-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.12-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.12-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's Fixed & Improved in v2.4.11
+              ### What's Fixed & Improved in v2.4.12
+              - **Interactive Visual Scrubber Bar in Down Free Space**:
+                - Extracted Down Free Space into a dedicated lower container completely outside `Modifier.horizontalScroll`, eliminating nested drag intercept conflicts in Compose.
+                - Designed a sleek visual scrub bar with background track, active progress fill, and a draggable playhead thumb indicator.
+                - Instant zero-delay touch response using `awaitEachGesture` and `awaitFirstDown`, allowing direct tap-to-jump and buttery smooth drag scrubbing across the entire project duration with haptic snap feedback.
+                - Real-time timecode readout badge displaying current timestamp and total project duration (`00:00.000 / 00:00.000`).
+              - **Elevated Down Left Space Jog Dial**:
+                - Elevated jog handle higher than bottom action buttons with a dedicated 52dp touch target.
+                - Features dual `SwapHoriz` and `DragHandle` visual indicators with bidirectional micro-jog sensitivity (80ms/px) for precision frame-by-frame seeking.
+              - **Direct Time Ruler Scrub & Tap**:
+                - Refactored `TimeRuler` canvas gesture handling with unconsumed down tracking, enabling instant tap seeking and drag scrubbing along the time ruler.
+              - **Jitter-Free Viewport Synchronization**:
+                - Replaced aggressive scroll-sync polling loops with an intelligent viewport guard that smoothly keeps the playhead needle visible during playback or seeking without fighting user gestures or causing snap-back jumps.
               - **Crash-Proof Video & Image Import**:
                 - Wrapped `imagePickerLauncher`, `multipleVideoPickerLauncher`, and `audioPickerLauncher` in full top-level and per-URI `Throwable` safety blocks. Any single invalid, unreadable, or corrupt media item is handled gracefully without crashing the application.
                 - Automatically creates or validates track availability before appending imported clips, preventing orphaned clips or timeline index mismatches.
@@ -126,9 +138,6 @@ jobs:
               - **Zero Internet Guarantee**:
                 - 100% offline with zero network permissions in `AndroidManifest.xml`. Built for privacy, performance, and F-Droid standards.
                 - **Timeline Viewport Clipping**: `TimeRuler` canvas now dynamically calculates visible window bounds (`scrollState.value`) and step interval based on display density, dropping tick drawing operations from 3,600+ lines down to ~40 ticks per frame and preventing GPU RenderThread starvation.
-                - **Resolved Gesture Conflict on Timeline**: Removed conflicting drag gesture consumer from the outer track Box, allowing `Modifier.horizontalScroll` to scroll the timeline tracks with buttery-smooth 120 FPS fluidity.
-                - **Optimized Video Preview Playback Loops**: Decoupled `currentPositionMs` from `LaunchedEffect` seeking so `exoPlayer.seekTo` is only executed when user manually scrubs while paused, eliminating looper message flooding and buffer flushing during continuous playback.
-                - **Removed Gesture Detector Teardown Loop**: Keyed `pointerInput` on stable clip identifiers with `rememberUpdatedState` instead of raw playback timestamps, preventing Compose from rebuilding gesture recognizers 25 times per second.
                 - **Non-blocking Plugin Architecture**: Seeded `PluginManager` with in-memory defaults and moved file system scanning and JSON decoding to `Dispatchers.IO`, keeping UI initialization instant.
                 - Enabled audio volume boost (>100%) in video preview player with `LoudnessEnhancer` up to 2000mB.
               - **Font Picker & Custom ZIP Font Archive Support**:
