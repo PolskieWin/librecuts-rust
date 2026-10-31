@@ -54,17 +54,19 @@ jobs:
       - name: Prepare APK Variants
         run: |
           mkdir -p "${GITHUB_WORKSPACE}/release-apks"
+          APP_VER=$(grep 'versionName = "' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | sed 's/-rs//')
+          echo "Preparing APKs for version: v${APP_VER}"
           cd app/build/outputs/apk/release/
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.10-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v${APP_VER}-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.10-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v${APP_VER}-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.10-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v${APP_VER}-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.10-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v${APP_VER}-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
