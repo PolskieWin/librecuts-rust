@@ -64,8 +64,8 @@ class AutoCaptionHelper(private val context: Context) {
                 val textEffect = EffectConfig.TextOverlay(
                     text = captionText,
                     font_size = 22f,
-                    x = 0.5f,
-                    y = 0.82f,
+                    x = 0f,
+                    y = 140f,
                     color_rgba = 0xFFFFFFFFL
                 )
 

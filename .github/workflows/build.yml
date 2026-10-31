@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.9-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.9-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.9-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.8-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.9-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,36 +78,42 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.8
+      - name: Publish GitHub Release v2.4.9
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.8
-            name: "LibreCut RS v2.4.8 - Eliminate ANR Freeze, Timeline Viewport Clipping, Preview Playback Optimization"
+            tag_name: v2.4.9
+            name: "LibreCut RS v2.4.9 - Raised Timeline Scrubbing Area, Down Left Space Scrub Handle, and Auto-Caption Fixes"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.8
+              # LibreCut RS v2.4.9
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Critical performance and stability release eliminating Android ANR (Application Not Responding) freezes during video editing, timeline navigation, and preview playback.
+              User experience refinement elevating timeline scrubbing controls safely above bottom action buttons, adding dedicated lower-left space jog dragging, and fixing auto-caption placement.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.8-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.8-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.8-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.8-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.9-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.9-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.9-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.9-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's Fixed & Optimized in v2.4.8
-              - **Eliminated Android ANR (Application Not Responding)**:
+              ### What's Fixed & Improved in v2.4.9
+              - **Down Left Space Timeline Jog Handle**:
+                - Added a dedicated, elevated jog scrub control in the bottom area of the left space sidebar with touch drag handling (both horizontal and vertical drag), allowing instant timeline navigation from the left side without conflicting with track headers.
+              - **Elevated Timeline Bottom Free Space**:
+                - Enforced `heightIn(min = 68.dp)` on the timeline bottom free space so multi-track projects never compress the scrub area into a thin sliver.
+                - Added 6dp physical separation between the timeline view and the bottom action toolbar, preventing accidental touches on bottom buttons (Split, Audio, Subtitles) when dragging to move the timeline.
+              - **Auto-Caption Positioning Fix**:
+                - Adjusted auto-caption text overlay coordinates from normalized center offsets to lower-third offset (`y = 140f`), placing generated subtitles in the natural subtitle area instead of the screen center.
                 - **Timeline Viewport Clipping**: `TimeRuler` canvas now dynamically calculates visible window bounds (`scrollState.value`) and step interval based on display density, dropping tick drawing operations from 3,600+ lines down to ~40 ticks per frame and preventing GPU RenderThread starvation.
                 - **Resolved Gesture Conflict on Timeline**: Removed conflicting drag gesture consumer from the outer track Box, allowing `Modifier.horizontalScroll` to scroll the timeline tracks with buttery-smooth 120 FPS fluidity.
                 - **Optimized Video Preview Playback Loops**: Decoupled `currentPositionMs` from `LaunchedEffect` seeking so `exoPlayer.seekTo` is only executed when user manually scrubs while paused, eliminating looper message flooding and buffer flushing during continuous playback.

@@ -1514,8 +1514,9 @@ fun EditorScreen(
                 onSeekPosition = { newPos -> currentPositionMs = newPos },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.9f)
+                    .weight(1.0f)
             )
+            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 

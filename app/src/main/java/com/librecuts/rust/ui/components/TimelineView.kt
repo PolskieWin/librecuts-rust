@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -200,6 +201,54 @@ fun TimelineView(
                     }
                 }
             }
+
+            // Down Left Space: Dedicated timestamp movement handle higher than bottom buttons
+            val leftDownPosState by rememberUpdatedState(currentPositionMs)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .heightIn(min = 68.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        shape = RoundedCornerShape(topStart = 8.dp)
+                    )
+                    .pointerInput(totalDurationMs) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            val deltaMs = (dragAmount.x * 25L + dragAmount.y * 15L).toLong()
+                            val newMs = (leftDownPosState + deltaMs).coerceIn(0L, totalDurationMs)
+                            onSeekPosition(applySnap(newMs))
+                        }
+                    }
+                    .pointerInput(totalDurationMs) {
+                        detectTapGestures {
+                            haptics.tick()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = "Move Timeline",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
 
         // Main Scrollable Timeline Tracks
@@ -252,13 +301,19 @@ fun TimelineView(
                     )
                 }
 
-                // Down Free Space: Move Through Timestamps by dragging in bottom free space
+                // Down Free Space: Move Through Timestamps by dragging in bottom free space (Elevated higher than buttons)
                 val currentPosState by rememberUpdatedState(currentPositionMs)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+                        .heightIn(min = 68.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(4.dp)
+                        )
                         .pointerInput(totalDurationMs, pxPerMs) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
@@ -277,22 +332,23 @@ fun TimelineView(
                                 }
                             }
                         }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.alpha(0.35f)
+                        modifier = Modifier.alpha(0.6f)
                     ) {
                         Icon(
                             imageVector = Icons.Default.SwapHoriz,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = strings.scrubTimestamps,
                             style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
