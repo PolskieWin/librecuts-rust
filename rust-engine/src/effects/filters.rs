@@ -157,7 +157,7 @@ pub fn apply_filter(rgba_buffer: &mut [u8], width: u32, height: u32, filter_type
             let radius = ((intensity * 12.0) as i32).max(1);
             let orig = rgba_buffer.to_vec();
             let w = width as i32;
-            let h = height as i32;
+            let _h = height as i32;
 
             rgba_buffer
                 .par_chunks_exact_mut(width as usize * 4)

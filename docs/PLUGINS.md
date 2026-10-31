@@ -193,3 +193,4 @@ To submit a plugin for inclusion in official community releases:
 2. Verify that no parameters have negative ranges unless required.
 3. Keep descriptions concise, accurate, and completely free of emojis or promotional text.
 4. Open a Pull Request on the GitHub repository: `https://github.com/PolskieWin/librecuts-rust` with your `.lcplugin` file added to `plugins/community/`.
+
