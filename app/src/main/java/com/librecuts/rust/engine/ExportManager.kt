@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -208,7 +209,8 @@ class ExportManager(private val context: Context) {
                         }
                     }
                 } else {
-                    File(videoClip.file_path).copyTo(outputFile, overwrite = true)
+                    val src = File(videoClip.file_path)
+                    src.copyTo(target = outputFile, overwrite = true)
                 }
                 outputFile.exists() && outputFile.length() > 0L
             } catch (e2: Exception) {
