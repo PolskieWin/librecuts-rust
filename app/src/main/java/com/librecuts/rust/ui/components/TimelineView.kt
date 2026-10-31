@@ -471,13 +471,13 @@ private fun TrackRow(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Transform,
-                                contentDescription = "Transition: ${clip.transition.label}",
+                                contentDescription = "Transition: ${clip.transition.displayName}",
                                 tint = Color.White,
                                 modifier = Modifier.size(11.dp)
                             )
                             if (transWidthDp > 36.dp) {
                                 Text(
-                                    text = clip.transition.label.take(5),
+                                    text = clip.transition.displayName.take(5),
                                     fontSize = 8.sp,
                                     color = Color.White,
                                     maxLines = 1

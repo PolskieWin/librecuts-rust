@@ -6,22 +6,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -165,25 +168,6 @@ fun EffectsSheet(
     var textStrokeColorRgba by remember(clip.id) { mutableLongStateOf(existingText?.stroke_color_rgba ?: 0xFF000000L) }
     var availableFonts by remember { mutableStateOf(fontManager.getAvailableFonts()) }
 
-    val fontPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                val opt = fontManager.importFontFromUri(it)
-                if (opt != null) {
-                    availableFonts = fontManager.getAvailableFonts()
-                    selectedFontPath = opt.path
-                    syncAll()
-                    haptics.snap()
-                    Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to import font", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     fun syncAll() {
         val newEffects = mutableListOf<EffectConfig>()
         if (bgRemovalEnabled) {
@@ -243,6 +227,25 @@ fun EffectsSheet(
             )
         }
         onUpdateClip(newEffects, speed, speedCurve, volume, transition, animation)
+    }
+
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val opt = fontManager.importFontFromUri(it)
+                if (opt != null) {
+                    availableFonts = fontManager.getAvailableFonts()
+                    selectedFontPath = opt.path
+                    syncAll()
+                    haptics.snap()
+                    Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to import font", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     Column(
@@ -888,12 +891,6 @@ fun EffectsSheet(
                                 onClick = {
                                     haptics.tick()
                                     selectedFontPath = fontOpt.path
-                                    syncAll()
-                                },
-                                label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
-                            )
-                        }
-                    }
                                     syncAll()
                                 },
                                 label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
