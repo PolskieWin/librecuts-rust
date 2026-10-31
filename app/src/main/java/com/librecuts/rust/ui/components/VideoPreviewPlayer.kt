@@ -289,7 +289,6 @@ fun VideoPreviewPlayer(
             } catch (e: Exception) {}
         }
     }
-    }
 
     // Dynamic Color Grading & Filter Matrix for Real-Time Clip Adjustments
     val colorMatrix = remember(activeClip?.effects) {
