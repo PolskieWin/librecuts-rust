@@ -139,8 +139,18 @@ fun VideoPreviewPlayer(
     var loudnessEnhancer by remember { mutableStateOf<LoudnessEnhancer?>(null) }
 
     DisposableEffect(exoPlayer, audioPlayer) {
-        val listener = object : Player.Listener {
-            override fun onAudioSessionIdChanged(sessionId: Int) {
+        val playerListener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    onPlaybackEnded()
+                }
+            }
+        }
+        val analyticsListener = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onAudioSessionIdChanged(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                sessionId: Int
+            ) {
                 audioSessionId = sessionId
                 if (sessionId != 0 && sessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
                     try {
@@ -151,15 +161,21 @@ fun VideoPreviewPlayer(
                     }
                 }
             }
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    onPlaybackEnded()
-                }
-            }
         }
-        exoPlayer.addListener(listener)
+        exoPlayer.addListener(playerListener)
+        exoPlayer.addAnalyticsListener(analyticsListener)
+
+        val initSessionId = try { exoPlayer.audioSessionId } catch (e: Exception) { 0 }
+        if (initSessionId != 0 && initSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+            audioSessionId = initSessionId
+            try {
+                loudnessEnhancer = LoudnessEnhancer(initSessionId).apply { enabled = true }
+            } catch (e: Exception) {}
+        }
+
         onDispose {
-            exoPlayer.removeListener(listener)
+            exoPlayer.removeListener(playerListener)
+            exoPlayer.removeAnalyticsListener(analyticsListener)
             try { loudnessEnhancer?.release() } catch (e: Exception) {}
             exoPlayer.release()
             audioPlayer.release()
@@ -629,7 +645,6 @@ fun VideoPreviewPlayer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
                     .drawWithContent {
                         drawContent()
                         // Creative Color Filter Blend Overlay

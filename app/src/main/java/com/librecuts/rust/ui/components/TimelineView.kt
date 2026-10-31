@@ -462,7 +462,7 @@ private fun TrackRow(
                 if (clip.transition != TransitionType.None) {
                     val clipWidthDp = (clip.durationMs * scale).dp
                     val transDur = clip.transitionDurationMs.coerceIn(100L, clip.durationMs)
-                    val transWidthDp = ((transDur * scale).dp).coerceIn(12.dp, clipWidthDp)
+                    val transWidthDp = (transDur * scale).dp.coerceAtLeast(8.dp).coerceAtMost(clipWidthDp)
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
@@ -498,7 +498,7 @@ private fun TrackRow(
                 if (clip.animation != AnimationType.None) {
                     val clipWidthDp = (clip.durationMs * scale).dp
                     val animDur = clip.animationDurationMs.coerceIn(100L, clip.durationMs)
-                    val animWidthDp = ((animDur * scale).dp).coerceIn(12.dp, clipWidthDp)
+                    val animWidthDp = (animDur * scale).dp.coerceAtLeast(8.dp).coerceAtMost(clipWidthDp)
                     val isOutAnim = clip.animation.category == "Out"
                     Box(
                         modifier = Modifier

@@ -127,8 +127,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.filled.AutoGraph
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import com.librecuts.rust.engine.ExportManager
 import com.librecuts.rust.engine.FileUtils
@@ -1853,13 +1851,15 @@ fun EditorScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(strings.fontLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     val availableFonts = remember { fontManager.getAvailableFonts() }
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(availableFonts) { fontOpt ->
+                        availableFonts.forEach { fontOpt ->
                             FilterChip(
                                 selected = (editingTextFontPath == fontOpt.path),
                                 onClick = {
@@ -1869,18 +1869,16 @@ fun EditorScreen(
                                 label = { Text(fontOpt.name, maxLines = 1, fontSize = 11.sp) }
                             )
                         }
-                        item {
-                            OutlinedButton(
-                                onClick = {
-                                    haptics.snap()
-                                    fontPickerLauncher.launch("*/*")
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(strings.importFont, fontSize = 11.sp)
-                            }
+                        OutlinedButton(
+                            onClick = {
+                                haptics.snap()
+                                fontPickerLauncher.launch("*/*")
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(strings.importFont, fontSize = 11.sp)
                         }
                     }
 
