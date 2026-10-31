@@ -58,13 +58,13 @@ jobs:
           ls -la
           for f in *.apk; do
             if [[ "$f" == *"universal"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-universal.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.5-universal.apk"
             elif [[ "$f" == *"arm64-v8a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-arm64-v8a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.5-arm64-v8a.apk"
             elif [[ "$f" == *"armeabi-v7a"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-armeabi-v7a.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.5-armeabi-v7a.apk"
             elif [[ "$f" == *"x86_64"* ]]; then
-              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.4-x86_64.apk"
+              cp "$f" "${GITHUB_WORKSPACE}/release-apks/LibreCut-RS-v2.4.5-x86_64.apk"
             else
               cp "$f" "${GITHUB_WORKSPACE}/release-apks/$f"
             fi
@@ -78,47 +78,67 @@ jobs:
             name: librecuts-rust-release-apks
             path: release-apks/*.apk
 
-      - name: Publish GitHub Release v2.4.4
+      - name: Publish GitHub Release v2.4.5
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-            tag_name: v2.4.4
-            name: "LibreCut RS v2.4.4 - Export Pipeline Fix, Reliable Font & ZIP Importer & Complete Polish/Spanish Localization"
+            tag_name: v2.4.5
+            name: "LibreCut RS v2.4.5 - Motion Blur & Effects, Keyframe Easing Graph, Speed Curves, Export ETA, Text Outline & Color, and Plugin Tutorial"
             draft: false
             prerelease: false
             make_latest: true
             files: release-apks/*.apk
             body: |
-              # LibreCut RS v2.4.4
+              # LibreCut RS v2.4.5
 
               > **Engineered & Designed with AI** (Google Antigravity AI) for **Tobiasz (PolskieWin)**  
               > *100% Offline • F-Droid Compliant • Rust Native SIMD • Vulkan GPU Compute • Material You • Custom Color Theming*
 
-              Major stability and fix release addressing export pipeline errors, typography font imports, and comprehensive Polish and Spanish button localization.
+              Major feature and stability release introducing Motion Blur and creative effects, interactive Speed Curves and Keyframe Easing Graphs, estimated export completion time (ETA), text outline and color customization, video/photo/text resizing, bottom free-space timeline timestamp scrubbing, un-stretched project cards, timeline transition/animation markers, and a comprehensive Plugin Development Tutorial in the repository.
 
               ---
 
               ### Download Variants
-              - **Universal APK (`LibreCut-RS-v2.4.4-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
-              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.4-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
-              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.4-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
-              - **x86_64 APK (`LibreCut-RS-v2.4.4-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
+              - **Universal APK (`LibreCut-RS-v2.4.5-universal.apk`)**: Bundles all architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Compatible with all Android devices (~4.5 MB).
+              - **ARMv8 64-bit APK (`LibreCut-RS-v2.4.5-arm64-v8a.apk`)**: Highly optimized for all modern 64-bit Android smartphones (~3.1 MB).
+              - **ARMv7 32-bit APK (`LibreCut-RS-v2.4.5-armeabi-v7a.apk`)**: Optimized for older 32-bit Android phones and tablets (~2.8 MB).
+              - **x86_64 APK (`LibreCut-RS-v2.4.5-x86_64.apk`)**: For Android emulators and Chromebooks (~3.1 MB).
 
               ---
 
-              ### What's Fixed & Added in v2.4.4
-              - **Fixed Export Error ("Native rendering pipeline returned false")**:
-                - Resolved Rust `serde` deserialization mismatch on `Keyframe`, `Clip`, and `EffectConfig` structures.
-                - Added fallback aliases (`timeMs`/`time_ms`, `sourceStartMs`/`source_start_ms`, `transitionDurationMs`, etc.) and default fields across all composition entities.
-                - Ensured export output directory exists prior to invocation (`outputDir.mkdirs()`) preventing `libc::open` `ENOENT` failures.
-                - Added automatic fallback to Android `MediaMuxer` pipeline if native render pipeline encounters unsupported streams.
-              - **Robust Custom Font & ZIP Archive Importer**:
-                - Inspects true stream header bytes (ZIP magic `0x50 0x4B`) to reliably detect archives regardless of file extension or MIME type.
-                - Properly extracts `.ttf` and `.otf` fonts from DaFont, Google Fonts, and custom archives while safely ignoring `__MACOSX` resource forks and hidden directories.
-                - Employs `Typeface.createFromFile` to load Compose `FontFamily` reliably across all Android 14+ devices without crashes.
-                - Enabled horizontal scrolling chip selector for installed fonts in Settings.
-              - **Complete Polish & Spanish UI Localization**:
-                - Localized all remaining hardcoded button labels, dialog actions, bottom sheet descriptions, and headers across the application.
-                - Includes full Polish and Spanish translations for: Split, Speed, Keyframe, Add, Save, Cancel, Jump, Audition Voice, Add to Timeline, TTS Voiceover, Subtitle Editor, Script to Subtitles, Cutout Sensitivity, Edge Feather, Invert Cutout, Transitions, Crop boundaries, and Community Plugins.
+              ### What's New & Fixed in v2.4.5
+              - **Resolved Crash on New Project**:
+                - Fixed empty composition state where uninitialized ExoPlayer/PlayerView attempted to inflate without active media items.
+                - Replaced void preview with an informative "No Media Added" canvas with quick-access clip import guidance.
+                - Protected LoudnessEnhancer with safe Throwable handling against audio session ID zero initialization.
+                - Removed premature list modification during project creation and navigation.
+              - **Motion Blur Filter & Creative Effects**:
+                - Added multi-threaded Rust SIMD motion blur box filter (`rust-engine/src/effects/filters.rs`).
+                - Added Motion Blur to filter selection with dynamic intensity adjustment slider.
+                - Added Compose preview blend overlay simulating real-time shutter blur.
+              - **Speed Curves & Keyframe Easing Graphs**:
+                - Visual interactive Bezier curve canvas in Effects Sheet for speed ramping presets (Montage, Hero Moment, Bullet Time, Flash In, Normal).
+                - Keyframe easing types (Linear, Ease In, Ease Out, Ease In-Out, Bounce) with visual curve graphs.
+              - **Estimated Export Completion Time (ETA)**:
+                - Real-time rendering percentage with accurate countdown estimation (`ETA: MM:SS`) in the Export Dialog.
+              - **Timeline Timestamp Scrubbing via Bottom Free Space**:
+                - Scrubbing playhead now works smoothly by dragging or tapping anywhere in the bottom empty space below timeline tracks.
+              - **Un-stretched Project Thumbnails**:
+                - Replaced rigid aspect ratio squashing in `ThumbnailCache` with proportional aspect-ratio scaling.
+                - Fixed project card image container to preserve true video/image aspect ratio without stretching.
+              - **Text Outline, Color Customization & Font Picker in Text Editor**:
+                - Added stroke width slider (0 to 12px) and outline color palette (Black, White, Red, Blue, Gold).
+                - Added text color palette (White, Yellow, Orange, Red, Green, Cyan, Pink, Dark).
+                - Subtitle editor dialog now lets users edit text, colors, outlines, and fonts on the spot.
+                - Automatically syncs and persists custom fonts on import.
+              - **Video, Photo & Text Resizing**:
+                - Added scale slider in Transform tab and pinch-to-zoom support for video and photo overlays.
+                - Font size and scale gestures for text overlays.
+              - **Timeline Markers for Transitions & Animations**:
+                - Transition badges at clip start timestamps with duration indicator.
+                - Animation badges at clip in/out timestamps.
+                - Transition and animation durations are clamped so they can be smaller, but never bigger than the clip duration.
+              - **Plugin Development Tutorial in Repository**:
+                - Added `docs/PLUGINS.md` detailing how to create custom `.lcplugin` UI layout designs and video filter plugins.
               - **Zero Internet Guarantee**:
                 - 100% offline with zero network permissions in `AndroidManifest.xml`. Built for privacy, performance, and F-Droid standards.

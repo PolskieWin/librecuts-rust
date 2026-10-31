@@ -62,13 +62,23 @@ enum class SpeedCurveType(val label: String) {
 }
 
 @Serializable
+enum class KeyframeEasingType(val label: String) {
+    LINEAR("Linear"),
+    EASE_IN("Ease In"),
+    EASE_OUT("Ease Out"),
+    EASE_IN_OUT("Ease In-Out"),
+    BOUNCE("Bounce")
+}
+
+@Serializable
 data class Keyframe(
     val timeMs: Long,
     val x: Float = 0f,
     val y: Float = 0f,
     val scale: Float = 1f,
     val rotation: Float = 0f,
-    val opacity: Float = 1f
+    val opacity: Float = 1f,
+    val easing: KeyframeEasingType = KeyframeEasingType.LINEAR
 )
 
 @Serializable
@@ -118,6 +128,7 @@ sealed class EffectConfig {
         val rotation_degrees: Float = 0f,
         val flip_h: Boolean = false,
         val flip_v: Boolean = false,
+        val scale: Float = 1.0f,
         val crop_aspect_ratio: String = "Freeform"
     ) : EffectConfig()
 
@@ -129,7 +140,9 @@ sealed class EffectConfig {
         val x: Float = 0.5f,
         val y: Float = 0.8f,
         val color_rgba: Long = 0xFFFFFFFFL,
-        val custom_font_path: String? = null
+        val custom_font_path: String? = null,
+        val stroke_width: Float = 0f,
+        val stroke_color_rgba: Long = 0xFF000000L
     ) : EffectConfig()
 
     @Serializable

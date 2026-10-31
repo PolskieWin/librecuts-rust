@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,13 +54,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,7 +98,9 @@ fun EffectsSheet(
     val haptics = rememberHapticHelper()
     val fontManager = remember { FontManager(context) }
 
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember(clip.id) {
+        mutableIntStateOf(if (clip.effects.any { it is EffectConfig.TextOverlay }) 6 else 0)
+    }
     val tabTitles = listOf("Adjust", "Animations", "Transitions", "Speed & Curve", "Crop", "Mask", "Text & Fonts")
 
     // Playback Speed & Speed Curve
@@ -134,6 +142,7 @@ fun EffectsSheet(
     // Creative Filter state
     val existingFilter = clip.effects.find { it is EffectConfig.Filter } as? EffectConfig.Filter
     var activeFilter by remember(clip.id) { mutableStateOf(existingFilter?.filter_type ?: "none") }
+    var filterIntensity by remember(clip.id) { mutableFloatStateOf(existingFilter?.intensity ?: 1.0f) }
 
     // Transform & Crop states
     val existingTransform = clip.effects.find { it is EffectConfig.Transform } as? EffectConfig.Transform
@@ -143,6 +152,7 @@ fun EffectsSheet(
     var cropRight by remember(clip.id) { mutableFloatStateOf(existingTransform?.crop_right ?: 0f) }
     var flipH by remember(clip.id) { mutableStateOf(existingTransform?.flip_h ?: false) }
     var flipV by remember(clip.id) { mutableStateOf(existingTransform?.flip_v ?: false) }
+    var mediaScale by remember(clip.id) { mutableFloatStateOf(existingTransform?.scale ?: 1.0f) }
 
     // Text & Custom Font states
     val existingText = clip.effects.find { it is EffectConfig.TextOverlay } as? EffectConfig.TextOverlay
@@ -150,6 +160,9 @@ fun EffectsSheet(
     var overlayText by remember(clip.id) { mutableStateOf(existingText?.text ?: "Subtitles") }
     var overlayFontSize by remember(clip.id) { mutableFloatStateOf(existingText?.font_size ?: 24f) }
     var selectedFontPath by remember(clip.id) { mutableStateOf(existingText?.custom_font_path) }
+    var textColorRgba by remember(clip.id) { mutableLongStateOf(existingText?.color_rgba ?: 0xFFFFFFFFL) }
+    var textStrokeWidth by remember(clip.id) { mutableFloatStateOf(existingText?.stroke_width ?: 0f) }
+    var textStrokeColorRgba by remember(clip.id) { mutableLongStateOf(existingText?.stroke_color_rgba ?: 0xFF000000L) }
     var availableFonts by remember { mutableStateOf(fontManager.getAvailableFonts()) }
 
     val fontPickerLauncher = rememberLauncherForActivityResult(
@@ -161,6 +174,7 @@ fun EffectsSheet(
                 if (opt != null) {
                     availableFonts = fontManager.getAvailableFonts()
                     selectedFontPath = opt.path
+                    syncAll()
                     haptics.snap()
                     Toast.makeText(context, "Font ${opt.name} imported!", Toast.LENGTH_SHORT).show()
                 } else {
@@ -197,7 +211,7 @@ fun EffectsSheet(
                 )
             )
         }
-        if (cropTop > 0f || cropBottom > 0f || cropLeft > 0f || cropRight > 0f || flipH || flipV) {
+        if (cropTop > 0f || cropBottom > 0f || cropLeft > 0f || cropRight > 0f || flipH || flipV || mediaScale != 1.0f) {
             newEffects.add(
                 EffectConfig.Transform(
                     crop_left = cropLeft,
@@ -205,7 +219,8 @@ fun EffectsSheet(
                     crop_right = cropRight,
                     crop_bottom = cropBottom,
                     flip_h = flipH,
-                    flip_v = flipV
+                    flip_v = flipV,
+                    scale = mediaScale
                 )
             )
         }
@@ -213,14 +228,17 @@ fun EffectsSheet(
             newEffects.add(EffectConfig.ColorGrading(brightness = brightness, contrast = contrast, saturation = saturation))
         }
         if (activeFilter != "none") {
-            newEffects.add(EffectConfig.Filter(filter_type = activeFilter, intensity = 1.0f))
+            newEffects.add(EffectConfig.Filter(filter_type = activeFilter, intensity = filterIntensity))
         }
         if (textOverlayEnabled) {
             newEffects.add(
                 EffectConfig.TextOverlay(
                     text = overlayText,
                     font_size = overlayFontSize,
-                    custom_font_path = selectedFontPath
+                    color_rgba = textColorRgba,
+                    custom_font_path = selectedFontPath,
+                    stroke_width = textStrokeWidth,
+                    stroke_color_rgba = textStrokeColorRgba
                 )
             )
         }
@@ -328,6 +346,7 @@ fun EffectsSheet(
                 Spacer(modifier = Modifier.height(6.dp))
                 val filterList = listOf(
                     "none" to "Normal",
+                    "motion_blur" to "Motion Blur",
                     "cinematic" to "Cinematic",
                     "cyberpunk" to "Cyberpunk",
                     "vintage" to "Vintage",
@@ -341,7 +360,7 @@ fun EffectsSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    filterList.take(4).forEach { (type, label) ->
+                    filterList.take(5).forEach { (type, label) ->
                         FilterChip(
                             selected = activeFilter == type,
                             onClick = { haptics.tick(); activeFilter = type; syncAll() },
@@ -354,13 +373,18 @@ fun EffectsSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    filterList.drop(4).forEach { (type, label) ->
+                    filterList.drop(5).forEach { (type, label) ->
                         FilterChip(
                             selected = activeFilter == type,
                             onClick = { haptics.tick(); activeFilter = type; syncAll() },
                             label = { Text(label, fontSize = 11.sp, maxLines = 1, softWrap = false) }
                         )
                     }
+                }
+                if (activeFilter != "none") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Filter Intensity: ${(filterIntensity * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Slider(value = filterIntensity, onValueChange = { filterIntensity = it; syncAll() }, valueRange = 0.1f..1.0f)
                 }
 
                 Divider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 10.dp))
@@ -523,6 +547,60 @@ fun EffectsSheet(
                 Text(strings.speedCurve, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(strings.speedCurveDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Visual Speed Curve & Keyframe Easing Graph
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF0F172A))
+                        .padding(8.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val w = size.width
+                        val h = size.height
+
+                        // Grid lines
+                        val gridColor = Color.White.copy(alpha = 0.08f)
+                        drawLine(gridColor, Offset(0f, h * 0.25f), Offset(w, h * 0.25f), 1f)
+                        drawLine(gridColor, Offset(0f, h * 0.5f), Offset(w, h * 0.5f), 1f)
+                        drawLine(gridColor, Offset(0f, h * 0.75f), Offset(w, h * 0.75f), 1f)
+                        drawLine(gridColor, Offset(w * 0.5f, 0f), Offset(w * 0.5f, h), 1f)
+
+                        val path = Path()
+                        when (speedCurve) {
+                            SpeedCurveType.NORMAL -> {
+                                path.moveTo(0f, h * 0.5f)
+                                path.lineTo(w, h * 0.5f)
+                            }
+                            SpeedCurveType.MONTAGE -> {
+                                path.moveTo(0f, h * 0.2f)
+                                path.cubicTo(w * 0.3f, h * 0.2f, w * 0.35f, h * 0.85f, w * 0.5f, h * 0.85f)
+                                path.cubicTo(w * 0.65f, h * 0.85f, w * 0.7f, h * 0.2f, w, h * 0.2f)
+                            }
+                            SpeedCurveType.HERO_MOMENT -> {
+                                path.moveTo(0f, h * 0.65f)
+                                path.cubicTo(w * 0.2f, h * 0.15f, w * 0.35f, h * 0.15f, w * 0.5f, h * 0.9f)
+                                path.cubicTo(w * 0.65f, h * 0.9f, w * 0.8f, h * 0.65f, w, h * 0.65f)
+                            }
+                            SpeedCurveType.BULLET_TIME -> {
+                                path.moveTo(0f, h * 0.5f)
+                                path.lineTo(w * 0.25f, h * 0.5f)
+                                path.lineTo(w * 0.3f, h * 0.92f)
+                                path.lineTo(w * 0.7f, h * 0.92f)
+                                path.lineTo(w * 0.75f, h * 0.5f)
+                                path.lineTo(w, h * 0.5f)
+                            }
+                            SpeedCurveType.FLASH_IN -> {
+                                path.moveTo(0f, h * 0.1f)
+                                path.cubicTo(w * 0.15f, h * 0.15f, w * 0.35f, h * 0.5f, w, h * 0.5f)
+                            }
+                        }
+                        drawPath(path, color = Color(0xFF38BDF8), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+                    }
+                }
                 Spacer(modifier = Modifier.height(10.dp))
 
                 SpeedCurveType.values().forEach { curve ->
@@ -618,6 +696,10 @@ fun EffectsSheet(
                 Text("${strings.cropRight}: ${(cropRight * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Slider(value = cropRight, onValueChange = { cropRight = it; syncAll() }, valueRange = 0.0f..0.4f)
 
+                Spacer(modifier = Modifier.height(10.dp))
+                Text("Resize Scale: ${String.format(java.util.Locale.US, "%.2fx", mediaScale)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Slider(value = mediaScale, onValueChange = { mediaScale = it; syncAll() }, valueRange = 0.2f..3.0f)
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(strings.flipHorizontal, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
@@ -695,7 +777,83 @@ fun EffectsSheet(
                     Text("${strings.fontSizeLabel}: ${overlayFontSize.toInt()}sp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = overlayFontSize, onValueChange = { overlayFontSize = it; syncAll() }, valueRange = 14f..64f)
 
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Text Color", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val colorPalette = listOf(
+                        0xFFFFFFFFL to "White",
+                        0xFFFFEB3BL to "Yellow",
+                        0xFFFF5722L to "Orange",
+                        0xFFF44336L to "Red",
+                        0xFF4CAF50L to "Green",
+                        0xFF00E5FFL to "Cyan",
+                        0xFFE91E63L to "Pink",
+                        0xFF0F172AL to "Dark"
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        colorPalette.forEach { (cVal, _) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(cVal))
+                                    .border(
+                                        width = if (textColorRgba == cVal) 3.dp else 1.dp,
+                                        color = if (textColorRgba == cVal) MaterialTheme.colorScheme.primary else Color.Gray,
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        haptics.tick()
+                                        textColorRgba = cVal
+                                        syncAll()
+                                    }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
+                    Text("Text Outline: ${textStrokeWidth.toInt()}px", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Slider(value = textStrokeWidth, onValueChange = { textStrokeWidth = it; syncAll() }, valueRange = 0f..12f)
+                    if (textStrokeWidth > 0f) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Outline Color", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val outlinePalette = listOf(
+                            0xFF000000L to "Black",
+                            0xFFFFFFFFL to "White",
+                            0xFFFF0000L to "Red",
+                            0xFF0284C7L to "Blue",
+                            0xFFFFD700L to "Gold"
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            outlinePalette.forEach { (cVal, _) ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(cVal))
+                                        .border(
+                                            width = if (textStrokeColorRgba == cVal) 3.dp else 1.dp,
+                                            color = if (textStrokeColorRgba == cVal) MaterialTheme.colorScheme.primary else Color.Gray,
+                                            shape = CircleShape
+                                        )
+                                        .clickable {
+                                            haptics.tick()
+                                            textStrokeColorRgba = cVal
+                                            syncAll()
+                                        }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -730,6 +888,12 @@ fun EffectsSheet(
                                 onClick = {
                                     haptics.tick()
                                     selectedFontPath = fontOpt.path
+                                    syncAll()
+                                },
+                                label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }
+                            )
+                        }
+                    }
                                     syncAll()
                                 },
                                 label = { Text(fontOpt.name, fontSize = 11.sp, maxLines = 1, softWrap = false) }

@@ -153,6 +153,48 @@ pub fn apply_filter(rgba_buffer: &mut [u8], width: u32, height: u32, filter_type
                     }
                 });
         }
+        "motion_blur" | "blur" => {
+            let radius = ((intensity * 12.0) as i32).max(1);
+            let orig = rgba_buffer.to_vec();
+            let w = width as i32;
+            let h = height as i32;
+
+            rgba_buffer
+                .par_chunks_exact_mut(width as usize * 4)
+                .enumerate()
+                .for_each(|(y, row)| {
+                    let y_i = y as i32;
+                    for x in 0..width as usize {
+                        let x_i = x as i32;
+                        let mut sum_r = 0u32;
+                        let mut sum_g = 0u32;
+                        let mut sum_b = 0u32;
+                        let mut count = 0u32;
+
+                        for k in -radius..=radius {
+                            let sample_x = (x_i + k).clamp(0, w - 1);
+                            let idx = ((y_i * w + sample_x) * 4) as usize;
+                            sum_r += orig[idx] as u32;
+                            sum_g += orig[idx + 1] as u32;
+                            sum_b += orig[idx + 2] as u32;
+                            count += 1;
+                        }
+
+                        let idx = x * 4;
+                        let orig_r = row[idx] as f32;
+                        let orig_g = row[idx + 1] as f32;
+                        let orig_b = row[idx + 2] as f32;
+
+                        let blurred_r = (sum_r / count) as f32;
+                        let blurred_g = (sum_g / count) as f32;
+                        let blurred_b = (sum_b / count) as f32;
+
+                        row[idx] = (orig_r * (1.0 - intensity) + blurred_r * intensity).clamp(0.0, 255.0) as u8;
+                        row[idx + 1] = (orig_g * (1.0 - intensity) + blurred_g * intensity).clamp(0.0, 255.0) as u8;
+                        row[idx + 2] = (orig_b * (1.0 - intensity) + blurred_b * intensity).clamp(0.0, 255.0) as u8;
+                    }
+                });
+        }
         _ => {}
     }
 }

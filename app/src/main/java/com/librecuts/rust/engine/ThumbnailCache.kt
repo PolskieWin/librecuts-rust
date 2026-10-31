@@ -54,6 +54,19 @@ object ThumbnailCache {
         bitmap
     }
 
+    private fun scalePreservingAspectRatio(bitmap: Bitmap, maxDim: Int = 360): Bitmap {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= 0 || h <= 0) return bitmap
+        val aspect = w.toFloat() / h.toFloat()
+        val (targetW, targetH) = if (w >= h) {
+            maxDim to (maxDim / aspect).toInt().coerceAtLeast(1)
+        } else {
+            (maxDim * aspect).toInt().coerceAtLeast(1) to maxDim
+        }
+        return if (targetW == w && targetH == h) bitmap else Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
+    }
+
     private fun extractVideoFrame(path: String, reqWidth: Int, reqHeight: Int): Bitmap? {
         val retriever = MediaMetadataRetriever()
         return try {
@@ -61,7 +74,7 @@ object ThumbnailCache {
             // Retrieve frame at 500ms
             val raw = retriever.getFrameAtTime(500_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             raw?.let {
-                Bitmap.createScaledBitmap(it, reqWidth, reqHeight, true)
+                scalePreservingAspectRatio(it, maxOf(reqWidth, reqHeight))
             }
         } catch (e: Exception) {
             null
@@ -77,10 +90,11 @@ object ThumbnailCache {
         BitmapFactory.decodeFile(path, options)
 
         var inSampleSize = 1
-        if (options.outHeight > reqHeight || options.outWidth > reqWidth) {
+        val maxReq = maxOf(reqWidth, reqHeight)
+        if (options.outHeight > maxReq || options.outWidth > maxReq) {
             val halfHeight = options.outHeight / 2
             val halfWidth = options.outWidth / 2
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+            while ((halfHeight / inSampleSize) >= maxReq && (halfWidth / inSampleSize) >= maxReq) {
                 inSampleSize *= 2
             }
         }
@@ -90,7 +104,7 @@ object ThumbnailCache {
         return try {
             val decoded = BitmapFactory.decodeFile(path, options)
             decoded?.let {
-                Bitmap.createScaledBitmap(it, reqWidth, reqHeight, true)
+                scalePreservingAspectRatio(it, maxReq)
             }
         } catch (e: Exception) {
             null

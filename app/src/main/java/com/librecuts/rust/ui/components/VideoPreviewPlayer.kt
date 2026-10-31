@@ -11,9 +11,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,8 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -113,8 +124,10 @@ fun VideoPreviewPlayer(
 
     val loudnessEnhancer = remember(exoPlayer) {
         try {
-            LoudnessEnhancer(exoPlayer.audioSessionId).apply { enabled = true }
-        } catch (e: Exception) {
+            if (exoPlayer.audioSessionId != 0 && exoPlayer.audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                LoudnessEnhancer(exoPlayer.audioSessionId).apply { enabled = true }
+            } else null
+        } catch (t: Throwable) {
             null
         }
     }
@@ -450,6 +463,46 @@ fun VideoPreviewPlayer(
     var liveZoom by remember(activeClip?.id) { mutableFloatStateOf(1f) }
     var liveRotation by remember(activeClip?.id) { mutableFloatStateOf(0f) }
 
+    if (videoUri.isNullOrEmpty() && activeClip == null) {
+        Box(
+            modifier = modifier
+                .background(Color(0xFF0F172A))
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.AddPhotoAlternate,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No Media Added",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Tap 'Add Clips' below to import videos or photos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+            }
+        }
+        return
+    }
+
     Box(
         modifier = modifier
             .background(Color.Black)
@@ -482,11 +535,12 @@ fun VideoPreviewPlayer(
                 val totalScale = currentKfTransform.scale * liveZoom * liveAnimScale
                 val totalRot = currentKfTransform.rotation + liveRotation + liveAnimRot
                 val totalAlpha = (currentKfTransform.opacity * liveAnimAlpha).coerceIn(0f, 1f)
+                val mediaScale = transform?.scale ?: 1.0f
 
                 this.translationX = totalX
                 this.translationY = totalY
-                this.scaleX = baseScaleX * totalScale
-                this.scaleY = baseScaleY * totalScale
+                this.scaleX = baseScaleX * totalScale * mediaScale
+                this.scaleY = baseScaleY * totalScale * mediaScale
                 this.rotationZ = totalRot
                 this.alpha = totalAlpha
             }
@@ -536,6 +590,10 @@ fun VideoPreviewPlayer(
                                 "vintage" -> drawRect(Color(0xFFD4A373), blendMode = BlendMode.Multiply, alpha = 0.40f * f.intensity)
                                 "noir", "grayscale" -> drawRect(Color.Black, blendMode = BlendMode.Saturation, alpha = 1.0f * f.intensity)
                                 "invert" -> drawRect(Color.White, blendMode = BlendMode.Difference, alpha = 1.0f * f.intensity)
+                                "motion_blur", "blur" -> {
+                                    drawRect(Color.White.copy(alpha = 0.10f * f.intensity), blendMode = BlendMode.Screen)
+                                    drawRect(Color.Black.copy(alpha = 0.12f * f.intensity), blendMode = BlendMode.Multiply)
+                                }
                                 else -> {}
                             }
                         }

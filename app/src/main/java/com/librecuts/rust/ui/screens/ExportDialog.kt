@@ -28,8 +28,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +60,15 @@ fun ExportDialog(
     var selectedResIndex by remember { mutableIntStateOf(1) } // Default 1080p
     var selectedFps by remember { mutableIntStateOf(30) }
     var smartRender by remember { mutableStateOf(true) }
+    var exportStartTimeMs by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(exportState) {
+        if (exportState is ExportState.Exporting && exportStartTimeMs == 0L) {
+            exportStartTimeMs = System.currentTimeMillis()
+        } else if (exportState !is ExportState.Exporting) {
+            exportStartTimeMs = 0L
+        }
+    }
 
     val resolutions = listOf(
         Triple(Pair(3840, 2160), "4K UHD (2160p)", 24),
@@ -98,14 +109,25 @@ fun ExportDialog(
 
                 when (exportState) {
                     is ExportState.Exporting -> {
+                        val elapsedSec = ((System.currentTimeMillis() - exportStartTimeMs) / 1000).coerceAtLeast(1)
+                        val progress = exportState.progress.coerceIn(0f, 1f)
+                        val etaSec = if (progress > 0.04f) {
+                            ((elapsedSec / progress) * (1f - progress)).toLong()
+                        } else null
+                        val etaStr = if (etaSec != null) {
+                            val m = etaSec / 60
+                            val s = etaSec % 60
+                            String.format(java.util.Locale.US, " • ETA: %02d:%02d", m, s)
+                        } else " • Estimating time..."
+
                         Text(
-                            text = "Rendering: ${(exportState.progress * 100).toInt()}%",
+                            text = "Rendering: ${(progress * 100).toInt()}%$etaStr",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         LinearProgressIndicator(
-                            progress = { exportState.progress },
+                            progress = { progress },
                             modifier = Modifier.fillMaxWidth().height(8.dp),
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant

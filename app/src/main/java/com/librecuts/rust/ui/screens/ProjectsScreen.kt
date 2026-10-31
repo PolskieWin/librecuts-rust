@@ -303,6 +303,7 @@ fun ProjectsScreen(
         NewProjectDialog(
             onDismiss = { showNewProjectDialog = false },
             onCreate = { title, aspect ->
+                showNewProjectDialog = false
                 scope.launch {
                     val width = if (aspect == "9:16") 1080 else if (aspect == "1:1") 1080 else 1920
                     val height = if (aspect == "9:16") 1920 else if (aspect == "1:1") 1080 else 1080
@@ -320,9 +321,11 @@ fun ProjectsScreen(
                             )
                         )
                     )
-                    repository.saveProject(newProj)
-                    refreshProjects()
-                    showNewProjectDialog = false
+                    try {
+                        repository.saveProject(newProj)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                     haptics.snap()
                     onOpenProject(newProj)
                 }
@@ -474,14 +477,15 @@ fun ProjectCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 10f)
-                    .background(Color.Black.copy(alpha = 0.85f)),
+                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                    .background(Color(0xFF0F172A)),
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailBitmap != null) {
                     Image(
                         bitmap = thumbnailBitmap!!.asImageBitmap(),
                         contentDescription = project.title,
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {

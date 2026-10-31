@@ -9,16 +9,16 @@ This project is a high-performance native fork and architectural rewrite of [Lib
 
 ---
 
-## Direct Download (Latest Release v2.4.4)
+## Direct Download (Latest Release v2.4.5)
 
 Download the stable APK for your Android device:
 
 | Package | Architecture | Direct Download Link | Size |
 |---|---|---|---|
-| **Universal APK** | All Architectures (arm64-v8a, armeabi-v7a, x86_64) | [Download Universal APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-universal.apk) | ~4.5 MB |
-| **ARMv8 64-bit APK** | Modern 64-bit Smartphones | [Download arm64-v8a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-arm64-v8a.apk) | ~3.1 MB |
-| **ARMv7 32-bit APK** | Legacy 32-bit Devices & Tablets | [Download armeabi-v7a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-armeabi-v7a.apk) | ~2.8 MB |
-| **x86_64 APK** | Android Emulators & Chromebooks | [Download x86_64 APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.4-x86_64.apk) | ~3.1 MB |
+| **Universal APK** | All Architectures (arm64-v8a, armeabi-v7a, x86_64) | [Download Universal APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.5-universal.apk) | ~4.5 MB |
+| **ARMv8 64-bit APK** | Modern 64-bit Smartphones | [Download arm64-v8a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.5-arm64-v8a.apk) | ~3.1 MB |
+| **ARMv7 32-bit APK** | Legacy 32-bit Devices & Tablets | [Download armeabi-v7a APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.5-armeabi-v7a.apk) | ~2.8 MB |
+| **x86_64 APK** | Android Emulators & Chromebooks | [Download x86_64 APK](https://github.com/PolskieWin/librecuts-rust/releases/latest/download/LibreCut-RS-v2.4.5-x86_64.apk) | ~3.1 MB |
 
 All releases can also be found on the [GitHub Releases Page](https://github.com/PolskieWin/librecuts-rust/releases/latest).
 
@@ -185,6 +185,19 @@ cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../app/src/main/jniLibs build
 cd ..
 ./gradlew assembleRelease
 ```
+
+---
+
+## Custom Plugin Development
+
+LibreCut RS supports custom community plugins for layouts, video filters, and audio effects packaged as `.lcplugin` files.
+
+Read the comprehensive guide and tutorial:
+- [Plugin Development Guide (docs/PLUGINS.md)](docs/PLUGINS.md)
+  - Creating custom UI layouts (CapCut Pro, Alight Motion, Studio layouts)
+  - Building creative filters and shaders (Motion Blur, Cyberpunk, Dreamy Glow)
+  - Manifest JSON schema and parameter configuration
+  - In-app import and local testing
 
 ---
 

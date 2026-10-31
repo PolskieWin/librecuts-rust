@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
@@ -206,6 +207,11 @@ fun EditorScreen(
     var showTextEditorDialog by remember { mutableStateOf(false) }
     var textToEdit by remember { mutableStateOf("") }
     var editingTextClipId by remember { mutableStateOf<String?>(null) }
+    var editingTextColor by remember { mutableLongStateOf(0xFFFFFFFFL) }
+    var editingTextStrokeWidth by remember { mutableFloatStateOf(0f) }
+    var editingTextStrokeColor by remember { mutableLongStateOf(0xFF000000L) }
+    var editingTextFontPath by remember { mutableStateOf<String?>(null) }
+    var editingTextFontSize by remember { mutableFloatStateOf(24f) }
     var showCustomScriptDialog by remember { mutableStateOf(false) }
     var customScriptText by remember { mutableStateOf("") }
     var showTtsDialog by remember { mutableStateOf(false) }
@@ -1027,10 +1033,32 @@ fun EditorScreen(
                             .clickable {
                                 textToEdit = textEff.text
                                 editingTextClipId = activeTextClip.id
+                                editingTextColor = textEff.color_rgba
+                                editingTextStrokeWidth = textEff.stroke_width
+                                editingTextStrokeColor = textEff.stroke_color_rgba
+                                editingTextFontPath = textEff.custom_font_path
+                                editingTextFontSize = textEff.font_size
                                 showTextEditorDialog = true
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
+                        if (textEff.stroke_width > 0f) {
+                            Text(
+                                text = textEff.text,
+                                fontFamily = customFontFamily,
+                                fontSize = (textEff.font_size * textScale).sp,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = textEff.stroke_width * textScale,
+                                        join = androidx.compose.ui.graphics.StrokeJoin.Round
+                                    )
+                                ),
+                                color = Color(textEff.stroke_color_rgba),
+                                textAlign = TextAlign.Center,
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Text(
                             text = textEff.text,
                             fontFamily = customFontFamily,
@@ -1655,6 +1683,7 @@ fun EditorScreen(
             DirectTransitionsSheet(
                 selectedTransition = selectedClip.transition,
                 transitionDurationMs = selectedClip.transitionDurationMs,
+                maxDurationMs = selectedClip.durationMs,
                 onSelectTransition = { newTransition, newDuration ->
                     val updatedTracks = composition.tracks.map { track ->
                         track.copy(clips = track.clips.map {
@@ -1711,6 +1740,52 @@ fun EditorScreen(
                         maxLines = 4
                     )
                     Spacer(modifier = Modifier.height(10.dp))
+
+                    // Text Color Choice
+                    Text("Text Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val colorPalette = listOf(
+                        0xFFFFFFFFL to "White",
+                        0xFFFFEB3BL to "Yellow",
+                        0xFFFF5722L to "Orange",
+                        0xFFF44336L to "Red",
+                        0xFF4CAF50L to "Green",
+                        0xFF00E5FFL to "Cyan",
+                        0xFFE91E63L to "Pink",
+                        0xFF0F172AL to "Dark"
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        colorPalette.forEach { (cVal, _) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(cVal))
+                                    .border(
+                                        width = if (editingTextColor == cVal) 2.5.dp else 1.dp,
+                                        color = if (editingTextColor == cVal) MaterialTheme.colorScheme.primary else Color.Gray,
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        haptics.tick()
+                                        editingTextColor = cVal
+                                    }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Outline Stroke: ${editingTextStrokeWidth.toInt()}px", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Slider(
+                        value = editingTextStrokeWidth,
+                        onValueChange = { editingTextStrokeWidth = it },
+                        valueRange = 0f..12f
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedButton(
                         onClick = {
                             ttsInitialText = textToEdit
@@ -1731,7 +1806,14 @@ fun EditorScreen(
                             if (clip.id == editingTextClipId) {
                                 val updatedEffects = clip.effects.map { eff ->
                                     if (eff is EffectConfig.TextOverlay) {
-                                        eff.copy(text = textToEdit)
+                                        eff.copy(
+                                            text = textToEdit,
+                                            color_rgba = editingTextColor,
+                                            stroke_width = editingTextStrokeWidth,
+                                            stroke_color_rgba = editingTextStrokeColor,
+                                            custom_font_path = editingTextFontPath,
+                                            font_size = editingTextFontSize
+                                        )
                                     } else eff
                                 }
                                 clip.copy(effects = updatedEffects)
@@ -2477,11 +2559,13 @@ private fun MediaImportSheet(
 private fun DirectTransitionsSheet(
     selectedTransition: TransitionType,
     transitionDurationMs: Long,
+    maxDurationMs: Long = 2000L,
     onSelectTransition: (TransitionType, Long) -> Unit
 ) {
     val haptics = rememberHapticHelper()
     val strings = LocalAppStrings.current
-    var currentDuration by remember { mutableFloatStateOf(transitionDurationMs.toFloat()) }
+    val effectiveMax = maxDurationMs.toFloat().coerceAtLeast(200f)
+    var currentDuration by remember { mutableFloatStateOf(transitionDurationMs.toFloat().coerceIn(100f, effectiveMax)) }
 
     Column(
         modifier = Modifier
@@ -2510,9 +2594,8 @@ private fun DirectTransitionsSheet(
         }
         Slider(
             value = currentDuration,
-            onValueChange = { currentDuration = it },
-            valueRange = 200f..2000f,
-            steps = 9
+            onValueChange = { currentDuration = it.coerceIn(100f, effectiveMax) },
+            valueRange = 100f..effectiveMax
         )
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -2532,7 +2615,7 @@ private fun DirectTransitionsSheet(
                     modifier = Modifier
                         .clickable {
                             haptics.snap()
-                            onSelectTransition(trans, currentDuration.toLong())
+                            onSelectTransition(trans, currentDuration.toLong().coerceIn(100L, maxDurationMs))
                         }
                 ) {
                     Box(

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,7 +29,9 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -50,10 +54,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.librecuts.rust.engine.AnimationType
 import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
+import com.librecuts.rust.engine.TransitionType
 import com.librecuts.rust.ui.theme.TrackAudioColor
 import com.librecuts.rust.ui.theme.TrackOverlayColor
 import com.librecuts.rust.ui.theme.TrackVideoColor
@@ -236,6 +242,47 @@ fun TimelineView(
                             .padding(vertical = 3.dp)
                     )
                 }
+
+                // Down Free Space: Move Through Timestamps by dragging in bottom free space
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+                        .pointerInput(totalDurationMs, zoomScale) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val deltaMs = (dragAmount.x / zoomScale).toLong()
+                                val newPos = (currentPositionMs + deltaMs).coerceIn(0L, totalDurationMs)
+                                onSeekPosition(applySnap(newPos))
+                            }
+                        }
+                        .pointerInput(totalDurationMs, zoomScale) {
+                            detectTapGestures { offset ->
+                                val clickedTimeMs = (offset.x / zoomScale).toLong()
+                                onSeekPosition(applySnap(clickedTimeMs))
+                            }
+                        }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.alpha(0.35f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Scrub timestamps",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
 
             // Playhead Scrubber Needle with Real-Time Floating Timecode Badge
@@ -403,6 +450,65 @@ private fun TrackRow(
                             .align(Alignment.BottomStart)
                             .size(11.dp)
                     )
+                }
+
+                // Show Transition Badge at start timestamp (clamped to clip duration)
+                if (clip.transition != TransitionType.None) {
+                    val transDur = clip.transitionDurationMs.coerceIn(100L, clip.durationMs)
+                    val transWidthDp = (transDur * scale).coerceAtLeast(16f).dp
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .width(transWidthDp)
+                            .fillMaxHeight()
+                            .background(Color.White.copy(alpha = 0.25f))
+                            .border(1.dp, Color.White.copy(alpha = 0.65f), RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp)),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Transform,
+                                contentDescription = "Transition: ${clip.transition.label}",
+                                tint = Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            if (transWidthDp > 36.dp) {
+                                Text(
+                                    text = clip.transition.label.take(5),
+                                    fontSize = 8.sp,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Show Animation Badge at timestamp (clamped to clip duration)
+                if (clip.animation != AnimationType.None) {
+                    val animDur = 600L.coerceAtMost(clip.durationMs)
+                    val animWidthDp = (animDur * scale).coerceAtLeast(16f).dp
+                    val isOutAnim = clip.animation.category == "Out"
+                    Box(
+                        modifier = Modifier
+                            .align(if (isOutAnim) Alignment.CenterEnd else Alignment.CenterStart)
+                            .width(animWidthDp)
+                            .height(13.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.65f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = clip.animation.label.take(6),
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }

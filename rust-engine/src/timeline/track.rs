@@ -22,6 +22,8 @@ pub struct Keyframe {
     pub rotation: f32,
     #[serde(default = "default_scale")]
     pub opacity: f32,
+    #[serde(default)]
+    pub easing: Option<String>,
 }
 
 fn default_scale() -> f32 { 1.0 }
@@ -78,6 +80,8 @@ pub enum EffectConfig {
         flip_h: bool,
         #[serde(default)]
         flip_v: bool,
+        #[serde(default = "default_scale")]
+        scale: f32,
         #[serde(default)]
         crop_aspect_ratio: Option<String>,
     },
@@ -95,6 +99,10 @@ pub enum EffectConfig {
         color_rgba: u64,
         #[serde(default)]
         custom_font_path: Option<String>,
+        #[serde(default)]
+        stroke_width: f32,
+        #[serde(default = "default_stroke_color_rgba")]
+        stroke_color_rgba: u64,
     },
     #[serde(alias = "ShapeMask")]
     ShapeMask {
@@ -127,8 +135,10 @@ pub enum EffectConfig {
 fn default_similarity() -> f32 { 0.35 }
 fn default_smoothness() -> f32 { 0.1 }
 fn default_despill() -> f32 { 0.5 }
+fn default_scale() -> f32 { 1.0 }
 fn default_font_size() -> f32 { 24.0 }
 fn default_color_rgba() -> u64 { 0xFFFFFFFF }
+fn default_stroke_color_rgba() -> u64 { 0xFF000000 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Clip {
