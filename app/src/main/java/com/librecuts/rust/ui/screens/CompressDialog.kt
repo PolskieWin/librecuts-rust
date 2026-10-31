@@ -95,7 +95,7 @@ fun CompressDialog(
                 when (exportState) {
                     is ExportState.Idle, is ExportState.Cancelled -> {
                         Text(
-                            text = "Choose target size for local compression without losing essential quality:",
+                            text = strings.chooseCompressTarget,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -127,8 +127,13 @@ fun CompressDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
+                                        val presetLabel = when (preset) {
+                                            CompressionPreset.DISCORD -> strings.compressionPresetDiscord
+                                            CompressionPreset.WEB -> strings.compressionPresetWeb
+                                            CompressionPreset.HIGH -> strings.compressionPresetHigh
+                                        }
                                         Text(
-                                            text = preset.label,
+                                            text = presetLabel,
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -182,7 +187,7 @@ fun CompressDialog(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Compressing video with NDK hardware acceleration...",
+                                text = strings.compressingProgress,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -208,7 +213,7 @@ fun CompressDialog(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Compression finished!",
+                                text = strings.compressionFinished,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -224,7 +229,7 @@ fun CompressDialog(
 
                     is ExportState.Error -> {
                         Text(
-                            text = "Compression failed: ${exportState.message}",
+                            text = "${strings.compressionFailed}: ${exportState.message}",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium
                         )

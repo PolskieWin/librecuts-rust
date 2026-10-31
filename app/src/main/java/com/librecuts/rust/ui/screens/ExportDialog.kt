@@ -117,11 +117,11 @@ fun ExportDialog(
                         val etaStr = if (etaSec != null) {
                             val m = etaSec / 60
                             val s = etaSec % 60
-                            String.format(java.util.Locale.US, " • ETA: %02d:%02d", m, s)
-                        } else " • Estimating time..."
+                            String.format(java.util.Locale.US, " • %s: %02d:%02d", strings.etaLabel, m, s)
+                        } else " • ${strings.estimatingTime}"
 
                         Text(
-                            text = "Rendering: ${(progress * 100).toInt()}%$etaStr",
+                            text = "${strings.renderingProgress}: ${(progress * 100).toInt()}%$etaStr",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )

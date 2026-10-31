@@ -187,7 +187,82 @@ data class AppStrings(
     val exportSuccess: String,
     val compressionPresetDiscord: String,
     val compressionPresetWeb: String,
-    val compressionPresetHigh: String
+    val compressionPresetHigh: String,
+
+    // Tabs in EffectsSheet
+    val tabAdjust: String,
+    val tabAnimations: String,
+    val tabTransitions: String,
+    val tabSpeedCurve: String,
+    val tabCrop: String,
+    val tabMask: String,
+    val tabText: String,
+
+    // Bottom Toolbar & Actions
+    val overlayPip: String,
+    val curveSpeed: String,
+    val layoutUi: String,
+    val addLayer: String,
+    val easingGraph: String,
+    val cutStart: String,
+    val trimmedStart: String,
+    val cutAtTime: String,
+    val voiceoverAdded: String,
+    val selectClipFirst: String,
+
+    // Text & Color Customization
+    val textColor: String,
+    val textOutline: String,
+    val outlineStroke: String,
+    val outlineColor: String,
+    val resizeScale: String,
+    val filterIntensity: String,
+
+    // Animation Categories & Dialog
+    val categoryIn: String,
+    val categoryOut: String,
+    val categoryCombo: String,
+    val clipAnimationsTitle: String,
+    val clipAnimationsDesc: String,
+
+    // Presets & Shapes
+    val shapeCircle: String,
+    val shapeRect: String,
+    val shapeHeart: String,
+    val shapeLinear: String,
+    val cropFreeform: String,
+
+    // Speed Curve Presets
+    val curveNormal: String,
+    val curveMontage: String,
+    val curveHero: String,
+    val curveBulletTime: String,
+    val curveFlashIn: String,
+
+    // Filters
+    val filterNone: String,
+    val filterCinema: String,
+    val filterNoir: String,
+    val filterVintage: String,
+    val filterCyberpunk: String,
+    val filterSunset: String,
+    val filterWinter: String,
+    val filterSepia: String,
+    val filterHdr: String,
+    val filterMotionBlur: String,
+
+    // Jump, Export & Plugins
+    val jumpTimeInstruction: String,
+    val renderingProgress: String,
+    val etaLabel: String,
+    val estimatingTime: String,
+    val chooseCompressTarget: String,
+    val compressingProgress: String,
+    val compressionFinished: String,
+    val compressionFailed: String,
+    val communityPluginsTitle: String,
+    val communityPluginsSubtitle: String,
+    val pluginParameters: String
 )
 
 val EnglishStrings = AppStrings(
@@ -240,7 +315,7 @@ val EnglishStrings = AppStrings(
     madeBy = "Made by Tobiasz (PolskieWin)",
     builtWithAi = "Rebuilt & Designed with Antigravity AI",
     openGitHub = "View on GitHub",
-    versionLabel = "v2.4.4",
+    versionLabel = "v2.4.6",
 
     undo = "Undo",
     redo = "Redo",
@@ -360,7 +435,74 @@ val EnglishStrings = AppStrings(
     exportSuccess = "Export completed successfully",
     compressionPresetDiscord = "Small (Discord / WhatsApp)",
     compressionPresetWeb = "Medium (Web / Social)",
-    compressionPresetHigh = "High Quality"
+    compressionPresetHigh = "High Quality",
+
+    tabAdjust = "Adjust",
+    tabAnimations = "Animations",
+    tabTransitions = "Transitions",
+    tabSpeedCurve = "Speed & Curve",
+    tabCrop = "Crop",
+    tabMask = "Mask",
+    tabText = "Text & Fonts",
+
+    overlayPip = "Overlay / PIP",
+    curveSpeed = "Curve Speed",
+    layoutUi = "Layout / UI",
+    addLayer = "Add Layer",
+    easingGraph = "Easing Graph",
+    cutStart = "Trim Start",
+    trimmedStart = "Trimmed start of clip",
+    cutAtTime = "Cut clip at",
+    voiceoverAdded = "Voiceover added!",
+    selectClipFirst = "Select a clip first",
+
+    textColor = "Text Color",
+    textOutline = "Text Outline",
+    outlineStroke = "Outline Stroke",
+    outlineColor = "Outline Color",
+    resizeScale = "Resize Scale",
+    filterIntensity = "Filter Intensity",
+
+    categoryIn = "In",
+    categoryOut = "Out",
+    categoryCombo = "Combo",
+    clipAnimationsTitle = "Clip Animations",
+    clipAnimationsDesc = "Apply dynamic entrance, exit, or loop animations to this clip",
+
+    shapeCircle = "Circle",
+    shapeRect = "Rectangle",
+    shapeHeart = "Heart",
+    shapeLinear = "Linear Wipe",
+    cropFreeform = "Freeform",
+
+    curveNormal = "Normal (1.0x)",
+    curveMontage = "Montage (Fast-Slow-Fast)",
+    curveHero = "Hero Moment (Slow Impact)",
+    curveBulletTime = "Bullet Time (0.2x Freeze)",
+    curveFlashIn = "Flash In (Speed Ramp)",
+
+    filterNone = "None (Original)",
+    filterCinema = "Cinema Teal-Orange",
+    filterNoir = "Noir B&W",
+    filterVintage = "Vintage 70s",
+    filterCyberpunk = "Cyberpunk Neon",
+    filterSunset = "Warm Sunset",
+    filterWinter = "Cold Winter",
+    filterSepia = "Sepia Retro",
+    filterHdr = "Dramatic HDR",
+    filterMotionBlur = "Motion Blur",
+
+    jumpTimeInstruction = "Enter time in seconds (e.g. 12.5) or MM:SS (e.g. 01:30):",
+    renderingProgress = "Rendering",
+    etaLabel = "ETA",
+    estimatingTime = "Estimating time...",
+    chooseCompressTarget = "Choose target size for local compression without losing essential quality:",
+    compressingProgress = "Compressing video with NDK hardware acceleration...",
+    compressionFinished = "Compression finished!",
+    compressionFailed = "Compression failed",
+    communityPluginsTitle = "Community Plugins & FX",
+    communityPluginsSubtitle = "Vulkan Shaders, Custom Filters & Audio DSP",
+    pluginParameters = "Plugin Parameters"
 )
 
 val SpanishStrings = AppStrings(
@@ -413,7 +555,7 @@ val SpanishStrings = AppStrings(
     madeBy = "Hecho por Tobiasz (PolskieWin)",
     builtWithAi = "Reconstruido y diseñado con Antigravity AI",
     openGitHub = "Ver en GitHub",
-    versionLabel = "v2.4.4",
+    versionLabel = "v2.4.6",
 
     undo = "Deshacer",
     redo = "Rehacer",
@@ -533,7 +675,74 @@ val SpanishStrings = AppStrings(
     exportSuccess = "Exportación completada con éxito",
     compressionPresetDiscord = "Pequeño (Discord / WhatsApp)",
     compressionPresetWeb = "Medio (Web / Redes)",
-    compressionPresetHigh = "Alta calidad"
+    compressionPresetHigh = "Alta calidad",
+
+    tabAdjust = "Ajustes",
+    tabAnimations = "Animaciones",
+    tabTransitions = "Transiciones",
+    tabSpeedCurve = "Velocidad y curvas",
+    tabCrop = "Recorte",
+    tabMask = "Máscara",
+    tabText = "Texto y fuentes",
+
+    overlayPip = "Superposición / PIP",
+    curveSpeed = "Curvas de velocidad",
+    layoutUi = "Diseño / UI",
+    addLayer = "Añadir capa",
+    easingGraph = "Gráfico de aceleración",
+    cutStart = "Recortar inicio",
+    trimmedStart = "Inicio del clip recortado",
+    cutAtTime = "Clip cortado en",
+    voiceoverAdded = "¡Voz en off añadida!",
+    selectClipFirst = "Selecciona primero un clip",
+
+    textColor = "Color de texto",
+    textOutline = "Contorno de texto",
+    outlineStroke = "Grosor del contorno",
+    outlineColor = "Color del contorno",
+    resizeScale = "Escala de tamaño",
+    filterIntensity = "Intensidad del filtro",
+
+    categoryIn = "Entrada",
+    categoryOut = "Salida",
+    categoryCombo = "Combo",
+    clipAnimationsTitle = "Animaciones del clip",
+    clipAnimationsDesc = "Aplica animaciones dinámicas de entrada, salida o bucle a este clip",
+
+    shapeCircle = "Círculo",
+    shapeRect = "Rectángulo",
+    shapeHeart = "Corazón",
+    shapeLinear = "Barrido lineal",
+    cropFreeform = "Libre",
+
+    curveNormal = "Normal (1.0x)",
+    curveMontage = "Montaje (Rápido-Lento-Rápido)",
+    curveHero = "Momento épico (Impacto lento)",
+    curveBulletTime = "Tiempo bala (Congelación 0.2x)",
+    curveFlashIn = "Flash In (Aceleración)",
+
+    filterNone = "Ninguno (Original)",
+    filterCinema = "Cine Turquesa y Naranja",
+    filterNoir = "Cine negro (B/N)",
+    filterVintage = "Vintage años 70",
+    filterCyberpunk = "Neón Cyberpunk",
+    filterSunset = "Atardecer cálido",
+    filterWinter = "Invierno frío",
+    filterSepia = "Sepia retro",
+    filterHdr = "HDR dramático",
+    filterMotionBlur = "Desenfoque de movimiento",
+
+    jumpTimeInstruction = "Introduce tiempo en segundos (ej. 12.5) o MM:SS (ej. 01:30):",
+    renderingProgress = "Procesando",
+    etaLabel = "Tiempo estimado",
+    estimatingTime = "Calculando tiempo...",
+    chooseCompressTarget = "Elige el tamaño objetivo para compresión local sin perder calidad:",
+    compressingProgress = "Comprimiendo vídeo con aceleración por hardware NDK...",
+    compressionFinished = "¡Compresión finalizada!",
+    compressionFailed = "Error en la compresión",
+    communityPluginsTitle = "Plugins y efectos comunitarios",
+    communityPluginsSubtitle = "Shaders Vulkan, filtros personalizados y DSP",
+    pluginParameters = "Parámetros del plugin"
 )
 
 val PolishStrings = AppStrings(
@@ -586,7 +795,7 @@ val PolishStrings = AppStrings(
     madeBy = "Stworzone przez Tobiasza (PolskieWin)",
     builtWithAi = "Przebudowane i zaprojektowane z Antigravity AI",
     openGitHub = "Zobacz na GitHubie",
-    versionLabel = "v2.4.4",
+    versionLabel = "v2.4.6",
 
     undo = "Cofnij",
     redo = "Ponów",
@@ -706,7 +915,74 @@ val PolishStrings = AppStrings(
     exportSuccess = "Eksport zakończony pomyślnie",
     compressionPresetDiscord = "Mały (Discord / WhatsApp)",
     compressionPresetWeb = "Średni (Sieć / Media)",
-    compressionPresetHigh = "Wysoka jakość"
+    compressionPresetHigh = "Wysoka jakość",
+
+    tabAdjust = "Regulacja",
+    tabAnimations = "Animacje",
+    tabTransitions = "Przejścia",
+    tabSpeedCurve = "Prędkość i krzywe",
+    tabCrop = "Kadrowanie",
+    tabMask = "Maska",
+    tabText = "Napisy i czcionki",
+
+    overlayPip = "Nakładka / PIP",
+    curveSpeed = "Krzywa prędkości",
+    layoutUi = "Układ / UI",
+    addLayer = "Dodaj warstwę",
+    easingGraph = "Wykres przejścia",
+    cutStart = "Przytnij początek",
+    trimmedStart = "Przycięto początek klipu",
+    cutAtTime = "Przecięto klip w",
+    voiceoverAdded = "Dodano nagranie lektora!",
+    selectClipFirst = "Najpierw zaznacz klip",
+
+    textColor = "Kolor tekstu",
+    textOutline = "Obrys tekstu",
+    outlineStroke = "Grubość obrysu",
+    outlineColor = "Kolor obrysu",
+    resizeScale = "Skala rozmiaru",
+    filterIntensity = "Intensywność filtra",
+
+    categoryIn = "Wejście",
+    categoryOut = "Wyjście",
+    categoryCombo = "Kombinacja",
+    clipAnimationsTitle = "Animacje klipu",
+    clipAnimationsDesc = "Zastosuj dynamiczne animacje wejścia, wyjścia lub zapętlenia do tego klipu",
+
+    shapeCircle = "Koło",
+    shapeRect = "Prostokąt",
+    shapeHeart = "Serce",
+    shapeLinear = "Liniowe odsłonięcie",
+    cropFreeform = "Dowolny",
+
+    curveNormal = "Normalna (1.0x)",
+    curveMontage = "Montaż (Szybko-Wolno-Szybko)",
+    curveHero = "Moment kulminacyjny (Spowolnienie)",
+    curveBulletTime = "Bullet Time (Zwolnienie 0.2x)",
+    curveFlashIn = "Flash In (Przyspieszenie)",
+
+    filterNone = "Brak (Oryginał)",
+    filterCinema = "Kino Teal-Orange",
+    filterNoir = "Noir Czarno-Biały",
+    filterVintage = "Styl Vintage lata 70.",
+    filterCyberpunk = "Cyberpunk Neon",
+    filterSunset = "Ciepły zachód słońca",
+    filterWinter = "Mroźna zima",
+    filterSepia = "Sepia retro",
+    filterHdr = "Dramatyczny HDR",
+    filterMotionBlur = "Rozmycie ruchu",
+
+    jumpTimeInstruction = "Wprowadź czas w sekundach (np. 12.5) lub MM:SS (np. 01:30):",
+    renderingProgress = "Renderowanie",
+    etaLabel = "Szacowany czas",
+    estimatingTime = "Szacowanie czasu...",
+    chooseCompressTarget = "Wybierz docelowy rozmiar kompresji bez utraty jakości:",
+    compressingProgress = "Kompresowanie wideo z akceleracją sprzętową NDK...",
+    compressionFinished = "Kompresja zakończona!",
+    compressionFailed = "Błąd kompresji",
+    communityPluginsTitle = "Wtyczki społeczności i efekty",
+    communityPluginsSubtitle = "Shadery Vulkan, filtry i procesory audio DSP",
+    pluginParameters = "Parametry wtyczki"
 )
 
 val LocalAppStrings = compositionLocalOf { EnglishStrings }
@@ -722,5 +998,112 @@ fun getAppStrings(language: AppLanguage): AppStrings {
         AppLanguage.ENGLISH -> EnglishStrings
         AppLanguage.SPANISH -> SpanishStrings
         AppLanguage.POLISH -> PolishStrings
+    }
+}
+
+fun getTransitionDisplayName(type: com.librecuts.rust.engine.TransitionType, strings: AppStrings): String {
+    return when (type) {
+        com.librecuts.rust.engine.TransitionType.None -> strings.filterNone
+        com.librecuts.rust.engine.TransitionType.CrossDissolve -> when (strings) {
+            PolishStrings -> "Płynne przenikanie"
+            SpanishStrings -> "Disolución cruzada"
+            else -> "Cross Dissolve"
+        }
+        com.librecuts.rust.engine.TransitionType.FadeToBlack -> when (strings) {
+            PolishStrings -> "Ściemnienie do czerni"
+            SpanishStrings -> "Fundido a negro"
+            else -> "Dip to Black"
+        }
+        com.librecuts.rust.engine.TransitionType.DipToWhite -> when (strings) {
+            PolishStrings -> "Rozjaśnienie do bieli"
+            SpanishStrings -> "Fundido a blanco"
+            else -> "Dip to White"
+        }
+        com.librecuts.rust.engine.TransitionType.SlideLeft -> when (strings) {
+            PolishStrings -> "Przesunięcie w lewo"
+            SpanishStrings -> "Deslizar izquierda"
+            else -> "Slide Left"
+        }
+        com.librecuts.rust.engine.TransitionType.SlideRight -> when (strings) {
+            PolishStrings -> "Przesunięcie w prawo"
+            SpanishStrings -> "Deslizar derecha"
+            else -> "Slide Right"
+        }
+        com.librecuts.rust.engine.TransitionType.ZoomBlur -> when (strings) {
+            PolishStrings -> "Rozmycie przybliżenia"
+            SpanishStrings -> "Desenfoque zoom"
+            else -> "Zoom Blur"
+        }
+        com.librecuts.rust.engine.TransitionType.WipeLeft -> when (strings) {
+            PolishStrings -> "Ścieranie w lewo"
+            SpanishStrings -> "Barrido a la izquierda"
+            else -> "Wipe Left"
+        }
+        com.librecuts.rust.engine.TransitionType.FlashWhite -> when (strings) {
+            PolishStrings -> "Błyskawiczne cięcie"
+            SpanishStrings -> "Corte con destello"
+            else -> "Flash Cut"
+        }
+    }
+}
+
+fun getAnimationDisplayName(type: com.librecuts.rust.engine.AnimationType, strings: AppStrings): String {
+    return when (type) {
+        com.librecuts.rust.engine.AnimationType.None -> strings.filterNone
+        com.librecuts.rust.engine.AnimationType.FadeIn -> when (strings) {
+            PolishStrings -> "Pojawianie się"
+            SpanishStrings -> "Aparición suave"
+            else -> "Fade In"
+        }
+        com.librecuts.rust.engine.AnimationType.ZoomIn -> when (strings) {
+            PolishStrings -> "Przybliżenie"
+            SpanishStrings -> "Acercar"
+            else -> "Zoom In"
+        }
+        com.librecuts.rust.engine.AnimationType.SlideUp -> when (strings) {
+            PolishStrings -> "Wjazd od dołu"
+            SpanishStrings -> "Deslizar arriba"
+            else -> "Slide Up"
+        }
+        com.librecuts.rust.engine.AnimationType.BounceIn -> when (strings) {
+            PolishStrings -> "Odbicie wejściowe"
+            SpanishStrings -> "Rebote de entrada"
+            else -> "Bounce In"
+        }
+        com.librecuts.rust.engine.AnimationType.FadeOut -> when (strings) {
+            PolishStrings -> "Zanikanie"
+            SpanishStrings -> "Desvanecer"
+            else -> "Fade Out"
+        }
+        com.librecuts.rust.engine.AnimationType.ZoomOut -> when (strings) {
+            PolishStrings -> "Oddalenie"
+            SpanishStrings -> "Alejar"
+            else -> "Zoom Out"
+        }
+        com.librecuts.rust.engine.AnimationType.SlideDown -> when (strings) {
+            PolishStrings -> "Zjazd w dół"
+            SpanishStrings -> "Deslizar abajo"
+            else -> "Slide Down"
+        }
+        com.librecuts.rust.engine.AnimationType.SpinOut -> when (strings) {
+            PolishStrings -> "Obrót wyjściowy"
+            SpanishStrings -> "Giro de salida"
+            else -> "Spin Out"
+        }
+        com.librecuts.rust.engine.AnimationType.Pulse -> when (strings) {
+            PolishStrings -> "Pulsowanie"
+            SpanishStrings -> "Pulso"
+            else -> "Pulse"
+        }
+        com.librecuts.rust.engine.AnimationType.Shake -> when (strings) {
+            PolishStrings -> "Drżenie"
+            SpanishStrings -> "Sacudida"
+            else -> "Shake"
+        }
+        com.librecuts.rust.engine.AnimationType.Heartbeat -> when (strings) {
+            PolishStrings -> "Bicie serca"
+            SpanishStrings -> "Latido"
+            else -> "Heartbeat"
+        }
     }
 }

@@ -59,6 +59,9 @@ import com.librecuts.rust.engine.Clip
 import com.librecuts.rust.engine.Composition
 import com.librecuts.rust.engine.Track
 import com.librecuts.rust.engine.TrackType
+import com.librecuts.rust.ui.theme.LocalAppStrings
+import com.librecuts.rust.ui.theme.getAnimationDisplayName
+import com.librecuts.rust.ui.theme.getTransitionDisplayName
 import com.librecuts.rust.engine.TransitionType
 import com.librecuts.rust.ui.theme.TrackAudioColor
 import com.librecuts.rust.ui.theme.TrackOverlayColor
@@ -384,6 +387,7 @@ private fun TrackRow(
     onClipSelected: (Clip) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     Box(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
@@ -471,13 +475,13 @@ private fun TrackRow(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Transform,
-                                contentDescription = "Transition: ${clip.transition.displayName}",
+                                contentDescription = "Transition: ${getTransitionDisplayName(clip.transition, strings)}",
                                 tint = Color.White,
                                 modifier = Modifier.size(11.dp)
                             )
                             if (transWidthDp > 36.dp) {
                                 Text(
-                                    text = clip.transition.displayName.take(5),
+                                    text = getTransitionDisplayName(clip.transition, strings).take(5),
                                     fontSize = 8.sp,
                                     color = Color.White,
                                     maxLines = 1
@@ -502,7 +506,7 @@ private fun TrackRow(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = clip.animation.label.take(6),
+                            text = getAnimationDisplayName(clip.animation, strings).take(6),
                             fontSize = 7.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,

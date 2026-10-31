@@ -80,6 +80,8 @@ import com.librecuts.rust.engine.SpeedCurveType
 import com.librecuts.rust.engine.TransitionType
 import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.LocalAppStrings
+import com.librecuts.rust.ui.theme.getAnimationDisplayName
+import com.librecuts.rust.ui.theme.getTransitionDisplayName
 import kotlinx.coroutines.launch
 
 @Composable
@@ -104,7 +106,15 @@ fun EffectsSheet(
     var selectedTab by remember(clip.id) {
         mutableIntStateOf(if (clip.effects.any { it is EffectConfig.TextOverlay }) 6 else 0)
     }
-    val tabTitles = listOf("Adjust", "Animations", "Transitions", "Speed & Curve", "Crop", "Mask", "Text & Fonts")
+    val tabTitles = listOf(
+        strings.tabAdjust,
+        strings.tabAnimations,
+        strings.tabTransitions,
+        strings.tabSpeedCurve,
+        strings.tabCrop,
+        strings.tabMask,
+        strings.tabText
+    )
 
     // Playback Speed & Speed Curve
     var speed by remember(clip.id) { mutableFloatStateOf(clip.speed) }
@@ -348,16 +358,16 @@ fun EffectsSheet(
                 Text(strings.filters, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(6.dp))
                 val filterList = listOf(
-                    "none" to "Normal",
-                    "motion_blur" to "Motion Blur",
-                    "cinematic" to "Cinematic",
-                    "cyberpunk" to "Cyberpunk",
-                    "vintage" to "Vintage",
-                    "vivid" to "Vivid",
-                    "noir" to "Noir B&W",
-                    "grayscale" to "Grayscale",
-                    "sepia" to "Sepia",
-                    "vignette" to "Vignette"
+                    "none" to strings.filterNone,
+                    "motion_blur" to strings.filterMotionBlur,
+                    "cinematic" to strings.filterCinema,
+                    "cyberpunk" to strings.filterCyberpunk,
+                    "vintage" to strings.filterVintage,
+                    "noir" to strings.filterNoir,
+                    "warm" to strings.filterSunset,
+                    "cold" to strings.filterWinter,
+                    "sepia" to strings.filterSepia,
+                    "hdr" to strings.filterHdr
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -386,7 +396,7 @@ fun EffectsSheet(
                 }
                 if (activeFilter != "none") {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Filter Intensity: ${(filterIntensity * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("${strings.filterIntensity}: ${(filterIntensity * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Slider(value = filterIntensity, onValueChange = { filterIntensity = it; syncAll() }, valueRange = 0.1f..1.0f)
                 }
 
@@ -412,15 +422,19 @@ fun EffectsSheet(
                 Text(strings.animationDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(12.dp))
 
-                listOf("In", "Out", "Combo").forEach { cat ->
+                listOf(
+                    "In" to strings.categoryIn,
+                    "Out" to strings.categoryOut,
+                    "Combo" to strings.categoryCombo
+                ).forEach { (catKey, catLabel) ->
                     Text(
-                        text = "$cat ${strings.animations}",
+                        text = "$catLabel - ${strings.animations}",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    val catAnims = AnimationType.values().filter { it.category == cat }
+                    val catAnims = AnimationType.values().filter { it.category == catKey }
                     catAnims.forEach { anim ->
                         Card(
                             shape = RoundedCornerShape(10.dp),
@@ -441,7 +455,7 @@ fun EffectsSheet(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(anim.label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(getAnimationDisplayName(anim, strings), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                                 }
                                 Button(
                                     onClick = {
@@ -457,8 +471,9 @@ fun EffectsSheet(
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
-                                        text = if (animation == anim) "Active" else "Select",
-                                        fontSize = 11.sp,
+                                        text = if (animation == anim) "✓" else "+",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         softWrap = false
                                     )
@@ -497,7 +512,7 @@ fun EffectsSheet(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Animation, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text(trans.displayName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
+                                Text(getTransitionDisplayName(trans, strings), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
                             }
                             Button(
                                 onClick = {
@@ -513,8 +528,9 @@ fun EffectsSheet(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = if (transition == trans) "Active" else "Select",
-                                    fontSize = 11.sp,
+                                    text = if (transition == trans) "✓" else "+",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -624,15 +640,14 @@ fun EffectsSheet(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(curve.label, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
-                                val desc = when (curve) {
-                                    SpeedCurveType.NORMAL -> "Constant playback speed"
-                                    SpeedCurveType.MONTAGE -> "Fast start, 0.4x slow-mo middle, fast finish"
-                                    SpeedCurveType.HERO_MOMENT -> "2x entry ramp into 0.25x bullet impact"
-                                    SpeedCurveType.BULLET_TIME -> "Instant 0.2x frozen motion"
-                                    SpeedCurveType.FLASH_IN -> "4x rapid acceleration into normal speed"
+                                val curveTitle = when (curve) {
+                                    SpeedCurveType.NORMAL -> strings.curveNormal
+                                    SpeedCurveType.MONTAGE -> strings.curveMontage
+                                    SpeedCurveType.HERO_MOMENT -> strings.curveHero
+                                    SpeedCurveType.BULLET_TIME -> strings.curveBulletTime
+                                    SpeedCurveType.FLASH_IN -> strings.curveFlashIn
                                 }
-                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                Text(curveTitle, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
                             }
                             Button(
                                 onClick = {
@@ -648,8 +663,9 @@ fun EffectsSheet(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = if (speedCurve == curve) "Active" else "Apply",
-                                    fontSize = 11.sp,
+                                    text = if (speedCurve == curve) "✓" else "+",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -666,7 +682,7 @@ fun EffectsSheet(
 
                 // Aspect Presets
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Freeform", "16:9", "9:16", "1:1", "4:5").forEach { preset ->
+                    listOf(strings.cropFreeform, "16:9", "9:16", "1:1", "4:5").forEach { preset ->
                         FilterChip(
                             selected = false,
                             onClick = {
@@ -700,7 +716,7 @@ fun EffectsSheet(
                 Slider(value = cropRight, onValueChange = { cropRight = it; syncAll() }, valueRange = 0.0f..0.4f)
 
                 Spacer(modifier = Modifier.height(10.dp))
-                Text("Resize Scale: ${String.format(java.util.Locale.US, "%.2fx", mediaScale)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text("${strings.resizeScale}: ${String.format(java.util.Locale.US, "%.2fx", mediaScale)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 Slider(value = mediaScale, onValueChange = { mediaScale = it; syncAll() }, valueRange = 0.2f..3.0f)
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -728,10 +744,10 @@ fun EffectsSheet(
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(
-                            Triple("circle", "Circle", Icons.Default.RadioButtonUnchecked),
-                            Triple("rectangle", "Rectangle", Icons.Default.CropSquare),
-                            Triple("heart", "Heart", Icons.Default.Favorite),
-                            Triple("linear", "Wipe", Icons.Default.LinearScale)
+                            Triple("circle", strings.shapeCircle, Icons.Default.RadioButtonUnchecked),
+                            Triple("rectangle", strings.shapeRect, Icons.Default.CropSquare),
+                            Triple("heart", strings.shapeHeart, Icons.Default.Favorite),
+                            Triple("linear", strings.shapeLinear, Icons.Default.LinearScale)
                         ).forEach { (shapeKey, label, icon) ->
                             FilterChip(
                                 selected = maskShape == shapeKey,
@@ -781,7 +797,7 @@ fun EffectsSheet(
                     Slider(value = overlayFontSize, onValueChange = { overlayFontSize = it; syncAll() }, valueRange = 14f..64f)
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("Text Color", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Text(strings.textColor, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(6.dp))
                     val colorPalette = listOf(
                         0xFFFFFFFFL to "White",
@@ -818,11 +834,11 @@ fun EffectsSheet(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Text Outline: ${textStrokeWidth.toInt()}px", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Text("${strings.textOutline}: ${textStrokeWidth.toInt()}px", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                     Slider(value = textStrokeWidth, onValueChange = { textStrokeWidth = it; syncAll() }, valueRange = 0f..12f)
                     if (textStrokeWidth > 0f) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Outline Color", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        Text(strings.outlineColor, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         Spacer(modifier = Modifier.height(4.dp))
                         val outlinePalette = listOf(
                             0xFF000000L to "Black",

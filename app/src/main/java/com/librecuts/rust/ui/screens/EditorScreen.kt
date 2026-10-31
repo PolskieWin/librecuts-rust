@@ -143,6 +143,8 @@ import com.librecuts.rust.ui.components.VideoPreviewPlayer
 import com.librecuts.rust.ui.components.rememberHapticHelper
 import com.librecuts.rust.ui.theme.AppThemeMode
 import com.librecuts.rust.ui.theme.LocalAppStrings
+import com.librecuts.rust.ui.theme.getAnimationDisplayName
+import com.librecuts.rust.ui.theme.getTransitionDisplayName
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -558,7 +560,7 @@ fun EditorScreen(
                             // CapCut Pro Streamlined Tool Ribbon
                             BottomToolbarItem(
                                 icon = Icons.Default.CallSplit,
-                                label = "Split",
+                                label = strings.split,
                                 onClick = {
                                     haptics.split()
                                     val target = selectedClip ?: composition.tracks.flatMap { it.clips }.find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
@@ -577,46 +579,46 @@ fun EditorScreen(
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.LibraryMusic,
-                                label = "Audio / SFX",
+                                label = strings.addAudio,
                                 onClick = { haptics.tick(); showAudioSheet = true }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Subtitles,
-                                label = "Text & Subs",
+                                label = strings.addSubtitles,
                                 onClick = { haptics.tick(); showSubtitleSheet = true }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Image,
-                                label = "Overlay / PIP",
+                                label = strings.overlayPip,
                                 onClick = { haptics.tick(); imagePickerLauncher.launch("image/*") }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.AutoFixHigh,
-                                label = "Effects",
+                                label = strings.effects,
                                 onClick = {
                                     haptics.tick()
-                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                 }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Animation,
-                                label = "Transitions",
+                                label = strings.transitions,
                                 onClick = {
                                     haptics.tick()
-                                    if (selectedClip != null) showTransitionsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                    if (selectedClip != null) showTransitionsSheet = true else Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                 }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Speed,
-                                label = "Curve Speed",
+                                label = strings.curveSpeed,
                                 onClick = {
                                     haptics.tick()
-                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                 }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Extension,
-                                label = "Layout / UI",
+                                label = strings.layoutUi,
                                 onClick = { haptics.tick(); showPluginManagerSheet = true }
                             )
                             BottomToolbarItem(
@@ -630,12 +632,12 @@ fun EditorScreen(
                             // Alight Motion Layer & Motion Design Ribbon
                             BottomToolbarItem(
                                 icon = Icons.Default.VideoCall,
-                                label = "Add Layer",
+                                label = strings.addLayer,
                                 onClick = { haptics.tick(); showMediaImportSheet = true }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Diamond,
-                                label = "Keyframe",
+                                label = strings.keyframe,
                                 onClick = {
                                     val target = selectedClip ?: composition.tracks.flatMap { it.clips }.find { currentPositionMs in it.timeline_start_ms until (it.timeline_start_ms + it.durationMs) }
                                     target?.let { clip ->
@@ -650,28 +652,28 @@ fun EditorScreen(
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.AutoGraph,
-                                label = "Easing Graph",
+                                label = strings.easingGraph,
                                 onClick = {
                                     haptics.tick()
-                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                    if (selectedClip != null) showEffectsSheet = true else Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                 }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.AutoAwesome,
-                                label = "Animations",
+                                label = strings.animations,
                                 onClick = {
                                     haptics.tick()
-                                    if (selectedClip != null) showAnimationsSheet = true else Toast.makeText(context, "Select clip first", Toast.LENGTH_SHORT).show()
+                                    if (selectedClip != null) showAnimationsSheet = true else Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                 }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.LibraryMusic,
-                                label = "Audio / SFX",
+                                label = strings.addAudio,
                                 onClick = { haptics.tick(); showAudioSheet = true }
                             )
                             BottomToolbarItem(
                                 icon = Icons.Default.Extension,
-                                label = "Plugins",
+                                label = strings.plugins,
                                 onClick = { haptics.tick(); showPluginManagerSheet = true }
                             )
                             BottomToolbarItem(
@@ -715,7 +717,7 @@ fun EditorScreen(
                                     if (selectedClip != null) {
                                         showTransitionsSheet = true
                                     } else {
-                                        Toast.makeText(context, "Select a clip first to apply transitions", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )
@@ -727,7 +729,7 @@ fun EditorScreen(
                                     if (selectedClip != null) {
                                         showAnimationsSheet = true
                                     } else {
-                                        Toast.makeText(context, "Select a clip first to apply animations", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )
@@ -739,7 +741,7 @@ fun EditorScreen(
                                     if (selectedClip != null) {
                                         showEffectsSheet = true
                                     } else {
-                                        Toast.makeText(context, "Select a clip first to adjust", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, strings.selectClipFirst, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )
@@ -1292,7 +1294,7 @@ fun EditorScreen(
                                     }
                                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                                     selectedClipId = secondHalf.id
-                                    Toast.makeText(context, "Cut clip at ${(currentPositionMs / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "${strings.cutAtTime} ${(currentPositionMs / 1000f).let { String.format(java.util.Locale.US, "%.1fs", it) }}", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
@@ -1324,7 +1326,7 @@ fun EditorScreen(
                                     }
                                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
                                     selectedClipId = trimmed.id
-                                    Toast.makeText(context, "Trimmed start of clip", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, strings.trimmedStart, Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
@@ -1332,7 +1334,7 @@ fun EditorScreen(
                     ) {
                         Icon(
                             Icons.Default.ContentCut,
-                            contentDescription = "Cut Start",
+                            contentDescription = strings.cutStart,
                             tint = if (activeTargetClip != null && (currentPositionMs > (activeTargetClip.timeline_start_ms + 50))) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                     }
@@ -1383,11 +1385,11 @@ fun EditorScreen(
                                     )
                                     val updatedTracks = composition.tracks.map { track ->
                                         if (track.track_type == TrackType.Audio) {
-                                            track.copy(clips = track.clips + audioClip)
+                                             track.copy(clips = track.clips + audioClip)
                                         } else track
                                     }
                                     updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                                    Toast.makeText(context, "Voiceover added!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, strings.voiceoverAdded, Toast.LENGTH_SHORT).show()
                                 }
                             } else {
                                 val hasPermission = ContextCompat.checkSelfPermission(
@@ -1742,7 +1744,7 @@ fun EditorScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Text Color Choice
-                    Text("Text Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(strings.textColor, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(4.dp))
                     val colorPalette = listOf(
                         0xFFFFFFFFL to "White",
@@ -1778,7 +1780,7 @@ fun EditorScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Outline Stroke: ${editingTextStrokeWidth.toInt()}px", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("${strings.outlineStroke}: ${editingTextStrokeWidth.toInt()}px", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Slider(
                         value = editingTextStrokeWidth,
                         onValueChange = { editingTextStrokeWidth = it },
@@ -1950,7 +1952,7 @@ private fun JumpToTimestampDialog(
         text = {
             Column {
                 Text(
-                    text = "Enter time in seconds (e.g. 12.5) or MM:SS (e.g. 01:30):",
+                    text = strings.jumpTimeInstruction,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -2625,7 +2627,7 @@ private fun DirectTransitionsSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = trans.displayName,
+                            text = getTransitionDisplayName(trans, strings),
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             textAlign = TextAlign.Center,
@@ -2644,8 +2646,13 @@ private fun DirectAnimationsSheet(
     onSelectAnimation: (AnimationType) -> Unit
 ) {
     val haptics = rememberHapticHelper()
+    val strings = LocalAppStrings.current
     var selectedCategory by remember { mutableStateOf("In") }
-    val categories = listOf("In", "Out", "Combo")
+    val categories = listOf(
+        "In" to strings.categoryIn,
+        "Out" to strings.categoryOut,
+        "Combo" to strings.categoryCombo
+    )
 
     Column(
         modifier = Modifier
@@ -2653,13 +2660,13 @@ private fun DirectAnimationsSheet(
             .padding(20.dp)
     ) {
         Text(
-            text = "Clip Animations",
+            text = strings.clipAnimationsTitle,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Apply dynamic entrance, exit, or loop animations to this clip",
+            text = strings.clipAnimationsDesc,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -2669,12 +2676,12 @@ private fun DirectAnimationsSheet(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            categories.forEach { cat ->
-                val isCatSelected = cat == selectedCategory
+            categories.forEach { (catKey, catLabel) ->
+                val isCatSelected = catKey == selectedCategory
                 Button(
                     onClick = {
                         haptics.tick()
-                        selectedCategory = cat
+                        selectedCategory = catKey
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isCatSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
@@ -2684,7 +2691,7 @@ private fun DirectAnimationsSheet(
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
-                        text = cat,
+                        text = catLabel,
                         fontSize = 12.sp,
                         fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal,
                         color = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -2722,7 +2729,7 @@ private fun DirectAnimationsSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = anim.label,
+                            text = getAnimationDisplayName(anim, strings),
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             textAlign = TextAlign.Center,
