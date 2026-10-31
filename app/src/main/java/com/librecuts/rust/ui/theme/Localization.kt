@@ -1060,15 +1060,25 @@ fun getAnimationDisplayName(type: com.librecuts.rust.engine.AnimationType, strin
             SpanishStrings -> "Acercar"
             else -> "Zoom In"
         }
-        com.librecuts.rust.engine.AnimationType.SlideUp -> when (strings) {
-            PolishStrings -> "Wjazd od dołu"
-            SpanishStrings -> "Deslizar arriba"
-            else -> "Slide Up"
+        com.librecuts.rust.engine.AnimationType.SlideInLeft -> when (strings) {
+            PolishStrings -> "Wjazd od lewej"
+            SpanishStrings -> "Deslizar desde la izquierda"
+            else -> "Slide In Left"
+        }
+        com.librecuts.rust.engine.AnimationType.SlideInRight -> when (strings) {
+            PolishStrings -> "Wjazd od prawej"
+            SpanishStrings -> "Deslizar desde la derecha"
+            else -> "Slide In Right"
         }
         com.librecuts.rust.engine.AnimationType.BounceIn -> when (strings) {
             PolishStrings -> "Odbicie wejściowe"
             SpanishStrings -> "Rebote de entrada"
             else -> "Bounce In"
+        }
+        com.librecuts.rust.engine.AnimationType.SpinIn -> when (strings) {
+            PolishStrings -> "Obrót wejściowy"
+            SpanishStrings -> "Giro de entrada"
+            else -> "Spin In"
         }
         com.librecuts.rust.engine.AnimationType.FadeOut -> when (strings) {
             PolishStrings -> "Zanikanie"
@@ -1080,30 +1090,51 @@ fun getAnimationDisplayName(type: com.librecuts.rust.engine.AnimationType, strin
             SpanishStrings -> "Alejar"
             else -> "Zoom Out"
         }
-        com.librecuts.rust.engine.AnimationType.SlideDown -> when (strings) {
-            PolishStrings -> "Zjazd w dół"
-            SpanishStrings -> "Deslizar abajo"
-            else -> "Slide Down"
+        com.librecuts.rust.engine.AnimationType.SlideOutLeft -> when (strings) {
+            PolishStrings -> "Zjazd w lewo"
+            SpanishStrings -> "Deslizar a la izquierda"
+            else -> "Slide Out Left"
+        }
+        com.librecuts.rust.engine.AnimationType.SlideOutRight -> when (strings) {
+            PolishStrings -> "Zjazd w prawo"
+            SpanishStrings -> "Deslizar a la derecha"
+            else -> "Slide Out Right"
         }
         com.librecuts.rust.engine.AnimationType.SpinOut -> when (strings) {
             PolishStrings -> "Obrót wyjściowy"
             SpanishStrings -> "Giro de salida"
             else -> "Spin Out"
         }
-        com.librecuts.rust.engine.AnimationType.Pulse -> when (strings) {
-            PolishStrings -> "Pulsowanie"
-            SpanishStrings -> "Pulso"
-            else -> "Pulse"
-        }
         com.librecuts.rust.engine.AnimationType.Shake -> when (strings) {
-            PolishStrings -> "Drżenie"
-            SpanishStrings -> "Sacudida"
-            else -> "Shake"
+            PolishStrings -> "Drżenie dynamiczne"
+            SpanishStrings -> "Sacudida dinámica"
+            else -> "Dynamic Shake"
         }
-        com.librecuts.rust.engine.AnimationType.Heartbeat -> when (strings) {
-            PolishStrings -> "Bicie serca"
-            SpanishStrings -> "Latido"
-            else -> "Heartbeat"
+        com.librecuts.rust.engine.AnimationType.Glitch -> when (strings) {
+            PolishStrings -> "Usterka RGB"
+            SpanishStrings -> "Glitch RGB"
+            else -> "RGB Glitch"
         }
+        com.librecuts.rust.engine.AnimationType.Pendulum -> when (strings) {
+            PolishStrings -> "Wahadło"
+            SpanishStrings -> "Péndulo"
+            else -> "Pendulum Swing"
+        }
+        com.librecuts.rust.engine.AnimationType.Flash -> when (strings) {
+            PolishStrings -> "Błysk stroboskopowy"
+            SpanishStrings -> "Destello estroboscópico"
+            else -> "Strobe Flash"
+        }
+        com.librecuts.rust.engine.AnimationType.Pulse -> when (strings) {
+            PolishStrings -> "Pulsowanie serca"
+            SpanishStrings -> "Pulso de latido"
+            else -> "Heartbeat Pulse"
+        }
+        com.librecuts.rust.engine.AnimationType.Swing -> when (strings) {
+            PolishStrings -> "Kołysanie delikatne"
+            SpanishStrings -> "Balanceo suave"
+            else -> "Gentle Swing"
+        }
+        else -> type.label
     }
 }

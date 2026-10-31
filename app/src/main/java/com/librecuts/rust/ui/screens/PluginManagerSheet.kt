@@ -255,6 +255,7 @@ private fun PluginItemCard(
     plugin: LibreCutPlugin,
     onToggle: (Boolean) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val haptics = rememberHapticHelper()
     var isExpanded by remember { mutableStateOf(false) }
 

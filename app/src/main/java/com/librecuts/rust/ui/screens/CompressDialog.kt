@@ -128,8 +128,8 @@ fun CompressDialog(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         val presetLabel = when (preset) {
-                                            CompressionPreset.DISCORD -> strings.compressionPresetDiscord
-                                            CompressionPreset.WEB -> strings.compressionPresetWeb
+                                            CompressionPreset.SMALL -> strings.compressionPresetDiscord
+                                            CompressionPreset.MEDIUM -> strings.compressionPresetWeb
                                             CompressionPreset.HIGH -> strings.compressionPresetHigh
                                         }
                                         Text(
