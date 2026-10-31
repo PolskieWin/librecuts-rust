@@ -281,43 +281,54 @@ fun EditorScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             scope.launch {
-                var timelineOffset = currentPositionMs
-                val newClips = mutableListOf<Clip>()
+                try {
+                    var timelineOffset = currentPositionMs
+                    val newClips = mutableListOf<Clip>()
 
-                uris.forEach { uri ->
-                    val (localPath, _) = FileUtils.resolveMediaUriToLocalFile(context, uri)
-                    val imgDurationMs = 3000L
-                    newClips.add(
-                        Clip(
-                            id = UUID.randomUUID().toString(),
-                            file_path = localPath,
-                            source_start_ms = 0L,
-                            source_end_ms = imgDurationMs,
-                            timeline_start_ms = timelineOffset,
-                            keyframes = listOf(
-                                Keyframe(timeMs = 0L, scale = 0.55f, x = 0f, y = 0f)
+                    uris.forEach { uri ->
+                        try {
+                            val (localPath, _) = FileUtils.resolveMediaUriToLocalFile(context, uri)
+                            val imgDurationMs = 3000L
+                            newClips.add(
+                                Clip(
+                                    id = UUID.randomUUID().toString(),
+                                    file_path = localPath,
+                                    source_start_ms = 0L,
+                                    source_end_ms = imgDurationMs,
+                                    timeline_start_ms = timelineOffset,
+                                    keyframes = listOf(
+                                        Keyframe(timeMs = 0L, scale = 0.55f, x = 0f, y = 0f)
+                                    )
+                                )
                             )
-                        )
-                    )
-                    timelineOffset += imgDurationMs
-                }
+                            timelineOffset += imgDurationMs
+                        } catch (t: Throwable) {
+                            android.util.Log.e("EditorScreen", "Error resolving image: $uri", t)
+                        }
+                    }
 
-                val hasOverlayTrack = composition.tracks.any { it.track_type == TrackType.Overlay }
-                val baseTracks = if (!hasOverlayTrack) {
-                    composition.tracks + Track(id = "track_overlay", track_type = TrackType.Overlay)
-                } else {
-                    composition.tracks
-                }
+                    if (newClips.isNotEmpty()) {
+                        val hasOverlayTrack = composition.tracks.any { it.track_type == TrackType.Overlay }
+                        val baseTracks = if (!hasOverlayTrack) {
+                            composition.tracks + Track(id = "track_overlay_${UUID.randomUUID().toString().take(6)}", track_type = TrackType.Overlay)
+                        } else {
+                            composition.tracks
+                        }
 
-                val updatedTracks = baseTracks.map { track ->
-                    if (track.track_type == TrackType.Overlay) {
-                        track.copy(clips = track.clips + newClips)
-                    } else track
+                        val updatedTracks = baseTracks.map { track ->
+                            if (track.track_type == TrackType.Overlay) {
+                                track.copy(clips = track.clips + newClips)
+                            } else track
+                        }
+                        updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                        selectedClipId = newClips.firstOrNull()?.id
+                        haptics.split()
+                        Toast.makeText(context, "Added ${newClips.size} image(s) smaller than video!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e("EditorScreen", "Fatal error in imagePickerLauncher", t)
+                    Toast.makeText(context, "Could not import image: ${t.localizedMessage ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
-                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                selectedClipId = newClips.firstOrNull()?.id
-                haptics.split()
-                Toast.makeText(context, "Added ${newClips.size} image(s) smaller than video!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -328,34 +339,52 @@ fun EditorScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             scope.launch {
-                var timelineOffset = composition.totalDurationMs
-                val newClips = mutableListOf<Clip>()
+                try {
+                    var timelineOffset = composition.totalDurationMs
+                    val newClips = mutableListOf<Clip>()
 
-                uris.forEach { uri ->
-                    val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, uri)
-                    newClips.add(
-                        Clip(
-                            id = UUID.randomUUID().toString(),
-                            file_path = localPath,
-                            source_start_ms = 0L,
-                            source_end_ms = realDurationMs,
-                            timeline_start_ms = timelineOffset
-                        )
-                    )
-                    timelineOffset += realDurationMs
-                }
-
-                val updatedTracks = composition.tracks.map { track ->
-                    if (track.track_type == TrackType.Video) {
-                        track.copy(clips = track.clips + newClips)
-                    } else {
-                        track
+                    uris.forEach { uri ->
+                        try {
+                            val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, uri)
+                            newClips.add(
+                                Clip(
+                                    id = UUID.randomUUID().toString(),
+                                    file_path = localPath,
+                                    source_start_ms = 0L,
+                                    source_end_ms = realDurationMs,
+                                    timeline_start_ms = timelineOffset
+                                )
+                            )
+                            timelineOffset += realDurationMs
+                        } catch (t: Throwable) {
+                            android.util.Log.e("EditorScreen", "Error resolving video: $uri", t)
+                        }
                     }
+
+                    if (newClips.isNotEmpty()) {
+                        val hasVideoTrack = composition.tracks.any { it.track_type == TrackType.Video }
+                        val baseTracks = if (!hasVideoTrack) {
+                            composition.tracks + Track(id = "track_video_${UUID.randomUUID().toString().take(6)}", track_type = TrackType.Video)
+                        } else {
+                            composition.tracks
+                        }
+
+                        val updatedTracks = baseTracks.map { track ->
+                            if (track.track_type == TrackType.Video) {
+                                track.copy(clips = track.clips + newClips)
+                            } else {
+                                track
+                            }
+                        }
+                        updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                        selectedClipId = newClips.firstOrNull()?.id
+                        haptics.split()
+                        Toast.makeText(context, "Imported ${newClips.size} clips!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e("EditorScreen", "Fatal error in multipleVideoPickerLauncher", t)
+                    Toast.makeText(context, "Could not import video: ${t.localizedMessage ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
-                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                selectedClipId = newClips.firstOrNull()?.id
-                haptics.split()
-                Toast.makeText(context, "Imported ${newClips.size} clips!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -366,25 +395,30 @@ fun EditorScreen(
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, it)
-                val audioClip = Clip(
-                    id = UUID.randomUUID().toString(),
-                    file_path = localPath,
-                    source_start_ms = 0L,
-                    source_end_ms = realDurationMs,
-                    timeline_start_ms = currentPositionMs
-                )
-                val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
-                val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio", track_type = TrackType.Audio)
-                val updatedTracks = baseTracks.map { track ->
-                    if (track.track_type == TrackType.Audio) {
-                        track.copy(clips = track.clips + audioClip)
-                    } else track
+                try {
+                    val (localPath, realDurationMs) = FileUtils.resolveMediaUriToLocalFile(context, it)
+                    val audioClip = Clip(
+                        id = UUID.randomUUID().toString(),
+                        file_path = localPath,
+                        source_start_ms = 0L,
+                        source_end_ms = realDurationMs,
+                        timeline_start_ms = currentPositionMs
+                    )
+                    val hasAudioTrack = composition.tracks.any { t -> t.track_type == TrackType.Audio }
+                    val baseTracks = if (hasAudioTrack) composition.tracks else composition.tracks + Track(id = "track_audio_${UUID.randomUUID().toString().take(6)}", track_type = TrackType.Audio)
+                    val updatedTracks = baseTracks.map { track ->
+                        if (track.track_type == TrackType.Audio) {
+                            track.copy(clips = track.clips + audioClip)
+                        } else track
+                    }
+                    updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
+                    haptics.split()
+                    showAudioSheet = false
+                    Toast.makeText(context, "Audio track added!", Toast.LENGTH_SHORT).show()
+                } catch (t: Throwable) {
+                    android.util.Log.e("EditorScreen", "Fatal error in audioPickerLauncher", t)
+                    Toast.makeText(context, "Could not import audio: ${t.localizedMessage ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
-                updateCompositionWithUndo(composition.copy(tracks = updatedTracks))
-                haptics.split()
-                showAudioSheet = false
-                Toast.makeText(context, "Audio track added!", Toast.LENGTH_SHORT).show()
             }
         }
     }

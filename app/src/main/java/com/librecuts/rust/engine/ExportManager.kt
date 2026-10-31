@@ -64,10 +64,12 @@ class ExportManager(private val context: Context) {
                 var path = clip.file_path
                 if (path.startsWith("content://") || path.startsWith("file://")) {
                     try {
-                        val (resolved, _) = FileUtils.resolveMediaUriToLocalFile(context, Uri.parse(path))
-                        path = resolved
+                        val localPath = FileUtils.ensureLocalCacheFile(context, Uri.parse(path))
+                        if (!localPath.isNullOrBlank()) {
+                            path = localPath
+                        }
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed resolving uri $path: ${e.message}")
+                        Log.w(TAG, "Failed caching uri $path for export: ${e.message}")
                     }
                 }
                 clip.copy(file_path = path)
@@ -128,12 +130,16 @@ class ExportManager(private val context: Context) {
         val videoClip = composition.tracks
             .filter { it.track_type == TrackType.Video || it.track_type == TrackType.Overlay }
             .flatMap { it.clips }
-            .firstOrNull { File(it.file_path).exists() && File(it.file_path).length() > 0L }
+            .firstOrNull { it.file_path.isNotBlank() }
             ?: return false
 
         return try {
             val extractor = MediaExtractor()
-            extractor.setDataSource(videoClip.file_path)
+            if (videoClip.file_path.startsWith("content://")) {
+                extractor.setDataSource(context, Uri.parse(videoClip.file_path), null)
+            } else {
+                extractor.setDataSource(videoClip.file_path)
+            }
 
             val muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val trackMap = mutableMapOf<Int, Int>()
@@ -195,7 +201,15 @@ class ExportManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "MediaMuxer fallback error: ${e.message}")
             try {
-                File(videoClip.file_path).copyTo(outputFile, overwrite = true)
+                if (videoClip.file_path.startsWith("content://")) {
+                    context.contentResolver.openInputStream(Uri.parse(videoClip.file_path))?.use { input ->
+                        FileOutputStream(outputFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                } else {
+                    File(videoClip.file_path).copyTo(outputFile, overwrite = true)
+                }
                 outputFile.exists() && outputFile.length() > 0L
             } catch (e2: Exception) {
                 false

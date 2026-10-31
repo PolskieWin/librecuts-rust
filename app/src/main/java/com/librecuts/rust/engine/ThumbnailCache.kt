@@ -16,11 +16,11 @@ import java.io.File
 object ThumbnailCache {
     // 32MB Memory Cache for instant frame retrieval
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-    private val cacheSize = maxMemory / 8 // Use 1/8th of available memory
+    private val cacheSize = (maxMemory / 8).coerceAtLeast(1024)
 
     private val memoryCache = object : LruCache<String, Bitmap>(cacheSize) {
         override fun sizeOf(key: String, bitmap: Bitmap): Int {
-            return bitmap.byteCount / 1024
+            return (bitmap.byteCount / 1024).coerceAtLeast(1)
         }
     }
 
@@ -34,8 +34,13 @@ object ThumbnailCache {
         memoryCache.get(cacheKey)?.let { return@withContext it }
 
         val isContentUri = filePath.startsWith("content://") || filePath.startsWith("file://")
-        val file = if (!isContentUri) File(filePath) else null
-        if (file != null && !file.exists()) return@withContext null
+        val file = if (!isContentUri) {
+            try { File(filePath) } catch (t: Throwable) { null }
+        } else null
+        if (file != null) {
+            val exists = try { file.exists() } catch (t: Throwable) { false }
+            if (!exists) return@withContext null
+        }
 
         val isImage = filePath.endsWith(".jpg", ignoreCase = true) ||
                 filePath.endsWith(".jpeg", ignoreCase = true) ||
@@ -43,10 +48,14 @@ object ThumbnailCache {
                 filePath.endsWith(".webp", ignoreCase = true) ||
                 (isContentUri && context != null && try { context.contentResolver.getType(android.net.Uri.parse(filePath))?.startsWith("image/") == true } catch (e: Exception) { false })
 
-        val bitmap = if (isImage) {
-            decodeSampledBitmap(filePath, targetWidth, targetHeight, context)
-        } else {
-            extractVideoFrame(filePath, targetWidth, targetHeight, context)
+        val bitmap = try {
+            if (isImage) {
+                decodeSampledBitmap(filePath, targetWidth, targetHeight, context)
+            } else {
+                extractVideoFrame(filePath, targetWidth, targetHeight, context)
+            }
+        } catch (t: Throwable) {
+            null
         }
 
         bitmap?.let {
@@ -77,44 +86,45 @@ object ThumbnailCache {
             } else {
                 retriever.setDataSource(path)
             }
-            // Retrieve frame at 500ms
+            // Retrieve frame at 500ms or fallback to first available frame
             val raw = retriever.getFrameAtTime(500_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.frameAtTime
             raw?.let {
                 scalePreservingAspectRatio(it, maxOf(reqWidth, reqHeight))
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             null
         } finally {
-            try { retriever.release() } catch (ignored: Exception) {}
+            try { retriever.release() } catch (ignored: Throwable) {}
         }
     }
 
     private fun decodeSampledBitmap(path: String, reqWidth: Int, reqHeight: Int, context: Context? = null): Bitmap? {
-        val isContent = path.startsWith("content://") && context != null
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
-        if (isContent) {
-            context!!.contentResolver.openInputStream(android.net.Uri.parse(path))?.use {
-                BitmapFactory.decodeStream(it, null, options)
-            }
-        } else {
-            BitmapFactory.decodeFile(path, options)
-        }
-
-        var inSampleSize = 1
-        val maxReq = maxOf(reqWidth, reqHeight)
-        if (options.outHeight > maxReq || options.outWidth > maxReq) {
-            val halfHeight = options.outHeight / 2
-            val halfWidth = options.outWidth / 2
-            while ((halfHeight / inSampleSize) >= maxReq && (halfWidth / inSampleSize) >= maxReq) {
-                inSampleSize *= 2
-            }
-        }
-
-        options.inJustDecodeBounds = false
-        options.inSampleSize = inSampleSize
         return try {
+            val isContent = path.startsWith("content://") && context != null
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            if (isContent) {
+                context!!.contentResolver.openInputStream(android.net.Uri.parse(path))?.use {
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+            } else {
+                BitmapFactory.decodeFile(path, options)
+            }
+
+            var inSampleSize = 1
+            val maxReq = maxOf(reqWidth, reqHeight)
+            if (options.outHeight > maxReq || options.outWidth > maxReq) {
+                val halfHeight = options.outHeight / 2
+                val halfWidth = options.outWidth / 2
+                while ((halfHeight / inSampleSize) >= maxReq && (halfWidth / inSampleSize) >= maxReq) {
+                    inSampleSize *= 2
+                }
+            }
+
+            options.inJustDecodeBounds = false
+            options.inSampleSize = inSampleSize
             val decoded = if (isContent) {
                 context!!.contentResolver.openInputStream(android.net.Uri.parse(path))?.use {
                     BitmapFactory.decodeStream(it, null, options)
@@ -125,7 +135,7 @@ object ThumbnailCache {
             decoded?.let {
                 scalePreservingAspectRatio(it, maxReq)
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             null
         }
     }
@@ -169,4 +179,3 @@ object ThumbnailCache {
         return result
     }
 }
-

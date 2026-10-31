@@ -140,10 +140,14 @@ fun VideoPreviewPlayer(
     // Helper to safely convert file paths (with or without scheme) into valid ExoPlayer URIs
     fun safeUri(path: String?): Uri {
         if (path.isNullOrEmpty()) return Uri.EMPTY
-        return if (path.startsWith("content://") || path.startsWith("file://")) {
-            Uri.parse(path)
-        } else {
-            Uri.fromFile(File(path))
+        return try {
+            if (path.startsWith("content://") || path.startsWith("file://")) {
+                Uri.parse(path)
+            } else {
+                Uri.fromFile(File(path))
+            }
+        } catch (t: Throwable) {
+            Uri.EMPTY
         }
     }
 
@@ -216,18 +220,29 @@ fun VideoPreviewPlayer(
 
     LaunchedEffect(videoUri, isImageMedia) {
         if (!isImageMedia && !videoUri.isNullOrEmpty()) {
-            val uri = safeUri(videoUri)
-            val currentUri = try { exoPlayer.currentMediaItem?.localConfiguration?.uri } catch (e: Exception) { null }
-            if (currentUri != uri) {
-                val mediaItem = MediaItem.fromUri(uri)
-                exoPlayer.setMediaItem(mediaItem)
-                exoPlayer.prepare()
-                val targetMediaPos = (currentPositionMs - clipStartMs + clipSourceStartMs).coerceAtLeast(0L)
-                exoPlayer.seekTo(targetMediaPos)
-                if (isPlaying) {
-                    exoPlayer.play()
+            try {
+                val uri = safeUri(videoUri)
+                if (uri != Uri.EMPTY) {
+                    val currentUri = try { exoPlayer.currentMediaItem?.localConfiguration?.uri } catch (e: Exception) { null }
+                    if (currentUri != uri) {
+                        val mediaItem = MediaItem.fromUri(uri)
+                        exoPlayer.setMediaItem(mediaItem)
+                        exoPlayer.prepare()
+                        val targetMediaPos = (currentPositionMs - clipStartMs + clipSourceStartMs).coerceAtLeast(0L)
+                        exoPlayer.seekTo(targetMediaPos)
+                        if (isPlaying) {
+                            exoPlayer.play()
+                        }
+                    }
                 }
+            } catch (t: Throwable) {
+                android.util.Log.w("VideoPreviewPlayer", "ExoPlayer failed to load videoUri $videoUri: ${t.message}")
             }
+        } else if (isImageMedia) {
+            try {
+                exoPlayer.stop()
+                exoPlayer.clearMediaItems()
+            } catch (t: Throwable) {}
         }
     }
 
@@ -656,14 +671,18 @@ fun VideoPreviewPlayer(
             .then(if (clipShape != null) Modifier.clip(clipShape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (isImageMedia && imageBitmap != null) {
-            Image(
-                bitmap = imageBitmap!!.asImageBitmap(),
-                contentDescription = null,
-                colorFilter = ColorFilter.colorMatrix(colorMatrix),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
+        if (isImageMedia) {
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap!!.asImageBitmap(),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.colorMatrix(colorMatrix),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize())
+            }
         } else {
             val grading = activeClip?.effects?.filterIsInstance<EffectConfig.ColorGrading>()?.firstOrNull()
             val filter = activeClip?.effects?.filterIsInstance<EffectConfig.Filter>()?.firstOrNull()
